@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/proto/">
+    <File Path="throttle.proto" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="FinancialThrottle.Apii/FinancialThrottle.Apii.csproj" />
+    <Project Path="FinancialThrottle.Worker/FinancialThrottle.Worker.csproj" />
+    <Project Path="FinancialThrottleService.Application/FinancialThrottleService.Application.csproj" />
+    <Project Path="FinancialThrottleService.Domain/FinancialThrottleService.Domain.csproj" />
+    <Project Path="FinancialThrottleService.Infrastructure/FinancialThrottleService.Infrastructure.csproj" />
+  </Folder>
+</Solution>

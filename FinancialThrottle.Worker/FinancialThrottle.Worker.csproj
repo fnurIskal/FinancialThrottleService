@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-FinancialThrottle.Worker-a490f158-75f5-4a60-b8cb-b40d3cef63b6</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.35.1" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.80.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.81.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FinancialThrottleService.Application\FinancialThrottleService.Application.csproj" />
+    <ProjectReference Include="..\FinancialThrottleService.Infrastructure\FinancialThrottleService.Infrastructure.csproj" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<Protobuf Include="..\..\proto\throttle.proto" GrpcServices="Server" />
+	</ItemGroup>
+</Project>
