@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -23,6 +23,6 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<Protobuf Include="..\..\proto\throttle.proto" GrpcServices="Server" />
+		<Protobuf Include="..\throttle.proto" GrpcServices="Server" />
 	</ItemGroup>
 </Project>

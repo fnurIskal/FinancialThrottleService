@@ -1,7 +1,11 @@
 using FinancialThrottle.Worker;
 
 var builder = Host.CreateApplicationBuilder(args);
+
 builder.Services.AddHostedService<Worker>();
 
-var host = builder.Build();
-host.Run();
+
+builder.Services.AddGrpc();
+
+var app = builder.Build();
+app.Run();

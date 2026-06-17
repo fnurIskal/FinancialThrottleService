@@ -21,7 +21,7 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<Protobuf Include="..\..\proto\throttle.proto" GrpcServices="Server" />
+		<Protobuf Include="..\throttle.proto" GrpcServices="Server" />
 	</ItemGroup>
 
 </Project>
