@@ -4,7 +4,7 @@ using System.Text;
 
 namespace FinancialThrottleService.Application.Interfaces
 {
-    internal interface ISecurityPriorityClient
+    public interface ISecurityPriorityClient
     {
         Task<Dictionary<string, double>> GetPrioritiesAsync(string[] securityCodes);
     }
