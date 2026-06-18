@@ -9,9 +9,9 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Dummy
     {
         private static readonly Dictionary<string, double> _scores = new()
     {
-        { "THYAO",   1.0 },   // ERTELITE + XU030
-        { "SASA",    0.5 },   // yalnızca ERTELITE
-        { "AKBNK",   0.0 },   // önceliksiz
+        { "THYAO",   1.0 },  
+        { "SASA",    0.5 },  
+        { "AKBNK",   0.0 },  
         { "MSSTOCK", 0.0 }
     };
 

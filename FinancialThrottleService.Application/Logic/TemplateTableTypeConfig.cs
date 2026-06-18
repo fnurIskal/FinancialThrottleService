@@ -4,7 +4,7 @@ using System.Text;
 
 namespace FinancialThrottleService.Application.Logic
 {
-    internal static class TemplateTableTypeConfig
+    public static class TemplateTableTypeConfig
     {
         public static IReadOnlyList<int> Resolve(
            string databaseName,

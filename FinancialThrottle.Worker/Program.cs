@@ -2,7 +2,6 @@ using FinancialThrottleService.Application.Logic;
 using FinancialThrottleService.Infrastructure;
 using FinancialThrottle.Worker;
 using FinancialThrottleService.Application.Interfaces;
-using FinancialThrottleService.Application.Logic;
 using Microsoft.AspNetCore.Builder;
 using FinancialThrottleService.Infrastructure.Persistence;
 
@@ -21,7 +20,8 @@ builder.Services.AddSingleton<SendConditionEvaluator>(sp =>
     var turkeyDb = builder.Configuration["DatabaseNames:Turkey"] ?? "RAS_STAJ107";
     return new SendConditionEvaluator(repo, turkeyDb);
 });
-
+builder.Services.Configure<ThrottleOptions>(
+    builder.Configuration.GetSection("ThrottleOptions"));
 // Worker
 builder.Services.AddHostedService<Worker>();
 
