@@ -1,4 +1,5 @@
 using FinancialThrottle.Grpc;
+using FinancialThrottleService.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
