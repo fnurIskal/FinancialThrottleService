@@ -1,9 +1,8 @@
 using FinancialThrottleService.Application.Logic;
-using FinancialThrottleService.Infrastructure;
 using FinancialThrottle.Worker;
 using FinancialThrottleService.Application.Interfaces;
 using Microsoft.AspNetCore.Builder;
-using FinancialThrottleService.Infrastructure.Persistence;
+using FinancialThrottleService.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 

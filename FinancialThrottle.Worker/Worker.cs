@@ -14,6 +14,7 @@ namespace FinancialThrottle.Worker
         private readonly GroupRetryTracker _retryTracker = null!;
         private readonly ThrottleOptions _options = null!;
         private readonly string _turkeyDb = null!;
+        private readonly ILogRepository _logRepository;
         public static DateTime StartedAt { get; private set; }
         public static DateTime LastHeartbeat { get; private set; }
 
@@ -22,13 +23,14 @@ namespace FinancialThrottle.Worker
       IServiceScopeFactory scopeFactory,
       GroupRetryTracker retryTracker,
       IOptions<ThrottleOptions> options,
-      IConfiguration configuration)
+      IConfiguration configuration, ILogRepository logRepository)
         {
             _logger = logger;
             _scopeFactory = scopeFactory;
             _retryTracker = retryTracker;
             _options = options.Value;
             _turkeyDb = configuration["DatabaseNames:Turkey"] ?? "RAS_STAJ107";
+            _logRepository = logRepository;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -48,7 +50,7 @@ namespace FinancialThrottle.Worker
         private async Task RunCycleAsync(CancellationToken ct)
         {
             _logger.LogDebug("Cycle başladı → {Time}", DateTime.UtcNow);
-            _processedThisCycle = 0; // <-- Alt çizgili field olanı sıfırlıyoruz
+            _processedThisCycle = 0; 
 
             await using var scope = _scopeFactory.CreateAsyncScope();
             var repository = scope.ServiceProvider.GetRequiredService<IFinancialRepository>();
@@ -126,6 +128,22 @@ namespace FinancialThrottle.Worker
                                 repository, duplicateMap);
                             _retryTracker.RecordSuccess(group.GroupKey);
                             Interlocked.Increment(ref _processedThisCycle);
+
+                        
+                            var logEntry = new LogEntry
+                            {
+                                Timestamp = DateTime.UtcNow,
+                                Level = "Information",
+                                Category = "financial",
+                                Message = $"GÖNDER: {group.GroupKey} Quarter={item.Quarter}",
+                                GroupKey = group.GroupKey,
+                                SecurityCode = group.SecurityCode,
+                                DatabaseName = group.DatabaseName,
+                                SecurityId = group.SecurityId,
+                                TemplateId = group.TemplateId,
+                                Quarter = item.Quarter
+                            };
+                            await _logRepository.WriteAsync(logEntry);
                             break;
 
                         case SendCondition.Wait:

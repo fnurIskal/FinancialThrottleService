@@ -1,13 +1,13 @@
 ﻿using FinancialThrottleService.Application.Interfaces;
+using FinancialThrottleService.Infrastructure.Logging;
 using FinancialThrottleService.Infrastructure.Persistence.Dummy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Microsoft.Extensions.Options;
+namespace FinancialThrottleService.Infrastructure
 
-namespace FinancialThrottleService.Infrastructure.Persistence
 {
+
     public static class DependencyInjection
     {
         public static IServiceCollection AddInfrastructure(
@@ -35,6 +35,11 @@ namespace FinancialThrottleService.Infrastructure.Persistence
                     "Üretim implementasyonları henüz hazır değil. " +
                     "appsettings.Development.json'da 'UseDummyData': true olmalı.");
             }
+
+            services.Configure<FinancialThrottleService.Infrastructure.Logging.MongoOptions>(
+      options => configuration.GetSection("MongoDB").Bind(options));
+
+            services.AddSingleton<ILogRepository, MongoLogRepository>();
 
             return services;
         }
