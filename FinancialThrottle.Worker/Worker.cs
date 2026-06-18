@@ -31,6 +31,10 @@ namespace FinancialThrottle.Worker
             _options = options.Value;
             _turkeyDb = configuration["DatabaseNames:Turkey"] ?? "RAS_STAJ107";
             _logRepository = logRepository;
+
+
+            StartedAt = DateTime.UtcNow;
+            LastHeartbeat = DateTime.UtcNow;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)

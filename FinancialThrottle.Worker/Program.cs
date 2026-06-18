@@ -1,8 +1,9 @@
-using FinancialThrottleService.Application.Logic;
 using FinancialThrottle.Worker;
 using FinancialThrottleService.Application.Interfaces;
-using Microsoft.AspNetCore.Builder;
+using FinancialThrottleService.Application.Logic;
 using FinancialThrottleService.Infrastructure;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,7 +27,15 @@ builder.Services.AddHostedService<Worker>();
 
 // gRPC
 builder.Services.AddGrpc();
+builder.Services.AddControllers();
 
 var app = builder.Build();
+
+
+
+app.UseHttpsRedirection();
+
+app.MapControllers();
+app.MapGrpcService<FinancialThrottle.Worker.Grpc.ThrottleStatusService>();
 
 app.Run();
