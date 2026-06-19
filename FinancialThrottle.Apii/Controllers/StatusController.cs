@@ -29,8 +29,8 @@ namespace FinancialThrottle.Apii.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "gRPC GetStatus hatası");
-                return StatusCode(500, "Worker'a bağlanılamadı");
+                _logger.LogError(ex, "Failed to retrieve status");
+                return StatusCode(500, new { error = "Failed to retrieve status" });
             }
         }
     }

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
 // Infrastructure
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -18,7 +19,6 @@ builder.Services.AddSingleton<GroupRetryTracker>();
 // SendConditionEvaluator
 if (useDummyData)
 {
-    // Dummy — Singleton repository
     builder.Services.AddSingleton<SendConditionEvaluator>(sp =>
     {
         var repo = sp.GetRequiredService<IFinancialRepository>();
@@ -28,7 +28,6 @@ if (useDummyData)
 }
 else
 {
-    // Real DB — Scoped repository
     builder.Services.AddScoped<SendConditionEvaluator>(sp =>
     {
         var repo = sp.GetRequiredService<IFinancialRepository>();

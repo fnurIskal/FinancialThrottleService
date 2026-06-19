@@ -14,9 +14,11 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.1" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FinancialThrottle.Worker\FinancialThrottle.Worker.csproj" />
     <ProjectReference Include="..\FinancialThrottleService.Application\FinancialThrottleService.Application.csproj" />
     <ProjectReference Include="..\FinancialThrottleService.Infrastructure\FinancialThrottleService.Infrastructure.csproj" />
   </ItemGroup>
