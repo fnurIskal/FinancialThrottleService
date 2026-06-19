@@ -1,9 +1,11 @@
 ﻿using FinancialThrottleService.Application.Interfaces;
 using FinancialThrottleService.Infrastructure.Logging;
+using FinancialThrottleService.Infrastructure.Models.Generated;
 using FinancialThrottleService.Infrastructure.Persistence.Dummy;
+using FinancialThrottleService.Infrastructure.Persistence.Sql;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 namespace FinancialThrottleService.Infrastructure
 
 {
@@ -16,6 +18,10 @@ namespace FinancialThrottleService.Infrastructure
         {
             var useDummyData = configuration.GetValue<bool>("ThrottleOptions:UseDummyData");
 
+            services.AddDbContext<RasStajContext>(options =>
+               options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+
+
             if (useDummyData)
             {
                 // Geliştirme ortamı — sahte implementasyonlar
@@ -26,14 +32,10 @@ namespace FinancialThrottleService.Infrastructure
             }
             else
             {
-                // Üretim ortamı — gerçek implementasyonlar (DB bağlantısı gelince eklenecek)
-                // services.AddScoped<IFinancialRepository,     SqlFinancialRepository>();
-                // services.AddScoped<ISecurityPriorityClient,  HttpSecurityPriorityClient>();
-                // services.AddScoped<IFinancialTransactionApi, HttpFinancialTransactionApi>();
-                // services.AddScoped<IEmailQueueRepository,    SqlEmailQueueRepository>();
-                throw new InvalidOperationException(
-                    "Üretim implementasyonları henüz hazır değil. " +
-                    "appsettings.Development.json'da 'UseDummyData': true olmalı.");
+                services.AddScoped<IFinancialRepository, SqlFinancialRepository>();
+                services.AddSingleton<ISecurityPriorityClient, DummySecurityPriorityClient>();
+                services.AddSingleton<IFinancialTransactionApi, DummyFinancialTransactionApi>();
+                services.AddSingleton<IEmailQueueRepository, DummyEmailQueueRepository>();
             }
 
             services.Configure<FinancialThrottleService.Infrastructure.Logging.MongoOptions>(

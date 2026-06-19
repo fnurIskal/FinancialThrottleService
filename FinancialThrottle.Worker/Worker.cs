@@ -53,58 +53,71 @@ namespace FinancialThrottle.Worker
 
         private async Task RunCycleAsync(CancellationToken ct)
         {
-            _logger.LogDebug("Cycle başladı → {Time}", DateTime.UtcNow);
-            _processedThisCycle = 0; 
-
-            await using var scope = _scopeFactory.CreateAsyncScope();
-            var repository = scope.ServiceProvider.GetRequiredService<IFinancialRepository>();
-            var evaluator = scope.ServiceProvider.GetRequiredService<SendConditionEvaluator>();
-            var msSourceIds = await repository.GetMsSourceIdsAsync();
-
-            await repository.WriteAliveSqlAsync();
-
-            await repository.WriteHeartbeatAsync();
-            LastHeartbeat = DateTime.UtcNow;
-
-            var allGroups = await repository.GetAllWaitingGroupsAsync();
-            _logger.LogInformation("Kuyrukta {Count} grup bulundu", allGroups.Count);
-
-            var duplicateMap = await repository.GetDuplicateItemCodeMapAsync();
-
-            var priorityScores = await GetPriorityScoresAsync(scope, allGroups);
-
-            for (int i = 0; i <= 1; i++)
+            try
             {
-                bool isOriginal = i == 1;
+                _logger.LogDebug("Cycle başladı → {Time}", DateTime.UtcNow);
+                _processedThisCycle = 0;
 
-                var groups = allGroups
-                    .Where(g => g.Items.Any(item => item.IsOriginal == isOriginal))
-                    .Where(g => !_retryTracker.IsSuspended(g.GroupKey))
-                    .OrderByDescending(g => priorityScores.GetValueOrDefault(g.SecurityCode, 0.0))
-                    .Take(_options.MaxParallelGroups)
-                    .ToList();
+                await using var scope = _scopeFactory.CreateAsyncScope();
+                var repository = scope.ServiceProvider.GetRequiredService<IFinancialRepository>();
+                var evaluator = scope.ServiceProvider.GetRequiredService<SendConditionEvaluator>();
+                var msSourceIds = await repository.GetMsSourceIdsAsync();
 
-                var tasks = groups.Select(group =>
-                    ProcessGroupAsync(group, isOriginal, repository, evaluator,
-                        msSourceIds, duplicateMap, ct));
+                await repository.WriteAliveSqlAsync();
 
-                await Task.WhenAll(tasks);
+                await repository.WriteHeartbeatAsync();
+                LastHeartbeat = DateTime.UtcNow;
+
+                var allGroups = await repository.GetAllWaitingGroupsAsync();
+                _logger.LogInformation("Kuyrukta {Count} grup bulundu", allGroups.Count);
+
+                var duplicateMap = await repository.GetDuplicateItemCodeMapAsync();
+
+                var priorityScores = await GetPriorityScoresAsync(scope, allGroups);
+
+                for (int i = 0; i <= 1; i++)
+                {
+                    bool isOriginal = i == 1;
+
+                    var groups = allGroups
+                        .Where(g => g.Items.Any(item => item.IsOriginal == isOriginal))
+                        .Where(g => !_retryTracker.IsSuspended(g.GroupKey))
+                        .OrderByDescending(g => priorityScores.GetValueOrDefault(g.SecurityCode, 0.0))
+                        .Take(_options.MaxParallelGroups)
+                        .ToList();
+                    var tasks = groups.Select(group =>
+                        ProcessGroupAsync(group, isOriginal, _scopeFactory, evaluator,
+                            msSourceIds, duplicateMap, ct));
+
+                    await Task.WhenAll(tasks);
+                }
+
+                await TryProcessSuspendedGroupsAsync(scope, ct);
+
+                _logger.LogDebug("Cycle bitti → İşlenen: {Count}", _processedThisCycle);
             }
-
-            await TryProcessSuspendedGroupsAsync(scope, ct);
-
-            _logger.LogDebug("Cycle bitti → İşlenen: {Count}", _processedThisCycle);
+            catch(Exception ex) {
+                {
+                    _logger.LogError(ex, "RunCycle fatal error");
+                    throw;
+                }
+            }
+           
         }
 
         private async Task ProcessGroupAsync(
        WaitingGroup group,
        bool isOriginal,
-       IFinancialRepository repository,
+       IServiceScopeFactory scopeFactory,
        SendConditionEvaluator evaluator,
        int[] msSourceIds,
        Dictionary<(int, int), int> duplicateMap,
        CancellationToken ct)
         {
+            await using var scope = scopeFactory.CreateAsyncScope();  
+            var repository = scope.ServiceProvider.GetRequiredService<IFinancialRepository>();
+
+
             var items = group.Items
                 .Where(i => i.IsOriginal == isOriginal)
                 .ToList();
@@ -240,21 +253,22 @@ namespace FinancialThrottle.Worker
 
                 _retryTracker.BeginSuspendRetry(key);
 
-                try
-                {
-                    await ProcessGroupAsync(group, false, repository, evaluator,
-                        msSourceIds, duplicateMap, ct);
+                
+                    try
+                    {
+                        await ProcessGroupAsync(group, false, _scopeFactory, evaluator,
+                            msSourceIds, duplicateMap, ct);
 
-                    _retryTracker.RecordSuspendRetrySuccess(key);
-                    _logger.LogInformation("{GroupKey} suspend retry başarılı", key);
-                }
-                catch (Exception ex)
-                {
-                    _retryTracker.RecordSuspendRetryFailure(key);
-                    _logger.LogError(ex, "{GroupKey} suspend retry başarısız", key);
-                }
-            }
-        }
+                        _retryTracker.RecordSuspendRetrySuccess(key);
+                        _logger.LogInformation("{GroupKey} suspend retry başarılı", key);
+                    }
+                    catch (Exception ex)
+                    {
+                        _retryTracker.RecordSuspendRetryFailure(key);
+                        _logger.LogError(ex, "{GroupKey} suspend retry başarısız", key);
+                    }
+                
+        } }
         private async Task<Dictionary<string, double>> GetPriorityScoresAsync(
        AsyncServiceScope scope, List<WaitingGroup> groups)
         {
