@@ -1,6 +1,8 @@
 ﻿using FinancialThrottleService.Application.Interfaces;
 using FinancialThrottleService.Infrastructure.Logging;
 using FinancialThrottleService.Infrastructure.Models.Generated;
+using FinancialThrottleService.Infrastructure.Models.Generated.RAS;
+using FinancialThrottleService.Infrastructure.Models.Generated.RAS107;
 using FinancialThrottleService.Infrastructure.Persistence.Dummy;
 using FinancialThrottleService.Infrastructure.Persistence.Sql;
 using Microsoft.EntityFrameworkCore;

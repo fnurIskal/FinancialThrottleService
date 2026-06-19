@@ -1,6 +1,7 @@
 ﻿using FinancialThrottleService.Application.Interfaces;
 using FinancialThrottleService.Domain.Models;
 using FinancialThrottleService.Infrastructure.Models.Generated;
+using FinancialThrottleService.Infrastructure.Models.Generated.RAS;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinancialThrottleService.Infrastructure.Persistence.Sql
@@ -17,6 +18,12 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
 
         public async Task<List<WaitingGroup>> GetAllWaitingGroupsAsync()
         {
+            Console.WriteLine($"[DEBUG] Context type: {_context.GetType().Name}");
+            Console.WriteLine($"[DEBUG] Database: {_context.Database.GetDbConnection().Database}");
+
+            var count = await _context.WaitingFinancialTables.CountAsync();
+            Console.WriteLine($"[DEBUG] WaitingFinancialTables count: {count}");
+
             var items = await _context.WaitingFinancialTables
                 .GroupBy(w => new { w.DatabaseName, w.SecurityId, w.TemplateId })
                 .Select(g => new WaitingGroup
@@ -35,8 +42,10 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                 })
                 .ToListAsync();
 
+            Console.WriteLine($"[DEBUG] Returning {items.Count} groups");
             return items;
         }
+
         public async Task<int[]> GetMsSourceIdsAsync()
         {
             return new[] { 32501 };
@@ -124,4 +133,4 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
             return codes;
         }
     }
-    }
+}

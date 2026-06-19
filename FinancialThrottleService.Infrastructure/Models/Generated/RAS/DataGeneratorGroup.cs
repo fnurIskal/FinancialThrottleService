@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace FinancialThrottleService.Infrastructure.Models.Generated;
+namespace FinancialThrottleService.Infrastructure.Models.Generated.RAS;
 
 public partial class DataGeneratorGroup
 {
