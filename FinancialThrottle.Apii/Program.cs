@@ -13,7 +13,8 @@ builder.Services.AddControllers();
 
 builder.Services.AddGrpcClient<ThrottleService.ThrottleServiceClient>(o =>
 {
-    o.Address = new Uri("http://localhost:5000");
+    var url = builder.Configuration["GrpcWorker:Url"] ?? "http://localhost:5000";
+    o.Address = new Uri(url);
 });
 
 builder.Services.AddDbContext<RasStajContext>(options =>
@@ -50,7 +51,7 @@ if (app.Environment.IsDevelopment())
         options.RoutePrefix = string.Empty;
     });
 }
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.MapControllers();
 
 app.Run();

@@ -1,0 +1,25 @@
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Copy project files
+COPY ["FinancialThrottle.Worker/FinancialThrottle.Worker.csproj", "FinancialThrottle.Worker/"]
+COPY ["FinancialThrottleService.Application/FinancialThrottleService.Application.csproj", "FinancialThrottleService.Application/"]
+COPY ["FinancialThrottleService.Domain/FinancialThrottleService.Domain.csproj", "FinancialThrottleService.Domain/"]
+COPY ["FinancialThrottleService.Infrastructure/FinancialThrottleService.Infrastructure.csproj", "FinancialThrottleService.Infrastructure/"]
+
+# Restore
+RUN dotnet restore "FinancialThrottle.Worker/FinancialThrottle.Worker.csproj"
+
+# Copy source
+COPY . .
+
+# Build & Publish
+RUN dotnet publish "FinancialThrottle.Worker/FinancialThrottle.Worker.csproj" -c Release -o /app/publish
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+WORKDIR /app
+COPY --from=build /app/publish .
+
+ENTRYPOINT ["dotnet", "FinancialThrottle.Worker.dll"]

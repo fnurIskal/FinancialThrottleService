@@ -40,7 +40,17 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
       QueueRequest request,
       ServerCallContext context)
     {
-        var groups = await _repository.GetAllWaitingGroupsAsync();
+        List<FinancialThrottleService.Domain.Models.WaitingGroup> groups;
+        try
+        {
+            groups = await _repository.GetAllWaitingGroupsAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GetQueue repository call failed");
+            throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+        }
+
         var response = new QueueResponse();
 
         foreach (var group in groups)

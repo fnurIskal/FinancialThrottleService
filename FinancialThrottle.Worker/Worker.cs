@@ -18,6 +18,7 @@ namespace FinancialThrottle.Worker
         public static DateTime StartedAt { get; private set; }
         public static DateTime LastHeartbeat { get; private set; }
 
+
         public Worker(
       ILogger<Worker> logger,
       IServiceScopeFactory scopeFactory,

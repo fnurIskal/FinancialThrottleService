@@ -1,0 +1,69 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: financial-throttle-api
+    ports:
+      - "5059:5059"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5059
+      - GrpcWorker__Url=http://worker:5000
+    depends_on:
+      - sqlserver
+      - mongodb
+      - worker
+    networks:
+      - financial-throttle-network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: financial-throttle-worker
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - ThrottleOptions__UseDummyData=false
+      - ConnectionStrings__DefaultConnection=Server=localhost;Database=RAS_STAJ;User Id=sqlserver;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
+    depends_on:
+      sqlserver:
+        condition: service_started
+      mongodb:
+        condition: service_started
+    networks:
+      - financial-throttle-network
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: financial-throttle-sqlserver
+    environment:
+      SA_PASSWORD: "REMOVED_SECRET"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - financial-throttle-network
+
+  mongodb:
+    image: mongo:7.0
+    container_name: financial-throttle-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: "${MONGO_PASSWORD:?Set MONGO_PASSWORD in .env}"
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - financial-throttle-network
+
+volumes:
+  sqlserver-data:
+  mongodb-data:
+
+networks:
+  financial-throttle-network:
+    driver: bridge

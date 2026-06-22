@@ -30,8 +30,7 @@ namespace FinancialThrottle.Apii.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to retrieve queue");
-                return StatusCode(500, new { error = "Failed to retrieve queue information" });
-
+                return StatusCode(500, new { error = "Failed to retrieve queue information", detail = ex.Message, type = ex.GetType().Name });
             }
 
         }
