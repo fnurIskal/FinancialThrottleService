@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace FinancialThrottle.Apii.Controllers
 {
 
-    //TEST EDİLEMEDİ
     [Route("api/[controller]")]
     [ApiController]
     public class SuspendedController : ControllerBase
