@@ -10,6 +10,7 @@ namespace FinancialThrottleService.Domain.Models
         public bool IsOriginal { get; set; }
         public string Username { get; set; } = string.Empty;
         public int DisclosureId { get; set; }
+        public bool SendEmail { get; set; }
 
     }
 }

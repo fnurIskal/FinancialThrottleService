@@ -106,13 +106,13 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Dummy
         public Task ExecuteSendAsync(
             string databaseName, int securityId, int quarter,
             int templateId, int disclosureId, bool isOriginal,
-            List<int> tableTypeIds, bool isInflationTemplate)
+            List<int> tableTypeIds, bool isInflationTemplate, bool sendEmail)
         {
             Console.WriteLine(
                 $"[DUMMY] ExecuteSend → {databaseName}|{securityId}|{templateId} " +
                 $"Quarter={quarter} IsOriginal={isOriginal} " +
                 $"TypeIds=[{string.Join(",", tableTypeIds)}] " +
-                $"Inflation={isInflationTemplate}");
+                $"Inflation={isInflationTemplate} SendEmail={sendEmail}");
 
             var group = _queue.FirstOrDefault(g =>
                 g.DatabaseName == databaseName &&

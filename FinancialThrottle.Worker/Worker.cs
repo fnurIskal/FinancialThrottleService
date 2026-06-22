@@ -189,7 +189,7 @@ namespace FinancialThrottle.Worker
                         _logger.LogWarning(
                             "{GroupKey} SUSPEND edildi", group.GroupKey);
 
-                        await NotifySuspendAsync(scope: null, group);
+                        await NotifySuspendAsync(scope, group);
                     }
                 }
             }
@@ -211,7 +211,7 @@ namespace FinancialThrottle.Worker
             await repository.ExecuteSendAsync(
                 group.DatabaseName, group.SecurityId, item.Quarter,
                 group.TemplateId, item.DisclosureId, item.IsOriginal,
-                tableTypeIds, isInflation);
+                tableTypeIds, isInflation, item.SendEmail);
 
             // DuplicateMap kontrolü — ek templateId varsa onu da gönder
             if (duplicateMap.TryGetValue(
@@ -224,7 +224,7 @@ namespace FinancialThrottle.Worker
                 await repository.ExecuteSendAsync(
                     group.DatabaseName, group.SecurityId, item.Quarter,
                     toTemplateId, item.DisclosureId, item.IsOriginal,
-                    tableTypeIds, isInflation);
+                    tableTypeIds, isInflation, item.SendEmail);
             }
         }
         private async Task TryProcessSuspendedGroupsAsync(

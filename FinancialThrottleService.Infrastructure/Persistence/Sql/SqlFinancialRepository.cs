@@ -1,49 +1,102 @@
-﻿using FinancialThrottleService.Application.Interfaces;
+using FinancialThrottleService.Application.Interfaces;
 using FinancialThrottleService.Domain.Models;
-using FinancialThrottleService.Infrastructure.Models.Generated;
 using FinancialThrottleService.Infrastructure.Models.Generated.RAS;
+using FinancialThrottleService.Infrastructure.Models.Generated.RAS107;
+using FinancialThrottleService.Infrastructure.Models.Generated.RAS32501;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinancialThrottleService.Infrastructure.Persistence.Sql
 {
     public class SqlFinancialRepository : IFinancialRepository
     {
-
         private readonly RasStajContext _context;
+        private readonly RasStaj107Context _context107;
+        private readonly RasStaj32501Context _context32501;
+        private readonly IEmailQueueRepository _emailQueueRepository;
 
-        public SqlFinancialRepository(RasStajContext context)
+        public SqlFinancialRepository(
+            RasStajContext context,
+            RasStaj107Context context107,
+            RasStaj32501Context context32501,
+            IEmailQueueRepository emailQueueRepository)
         {
             _context = context;
+            _context107 = context107;
+            _context32501 = context32501;
+            _emailQueueRepository = emailQueueRepository;
         }
+
+        private static bool IsTurkeyDb(string dbName) =>
+            dbName.Contains("107", StringComparison.OrdinalIgnoreCase) ||
+            dbName.Equals("RAS_101", StringComparison.OrdinalIgnoreCase) ||
+            dbName.Equals("RAS_1", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsMsSourceDb(string dbName) =>
+            dbName.Contains("32501", StringComparison.OrdinalIgnoreCase);
 
         public async Task<List<WaitingGroup>> GetAllWaitingGroupsAsync()
         {
-            Console.WriteLine($"[DEBUG] Context type: {_context.GetType().Name}");
-            Console.WriteLine($"[DEBUG] Database: {_context.Database.GetDbConnection().Database}");
+            // Step 1: Load all queue rows then group in memory
+            var allRows = await _context.WaitingFinancialTables.ToListAsync();
 
-            var count = await _context.WaitingFinancialTables.CountAsync();
-            Console.WriteLine($"[DEBUG] WaitingFinancialTables count: {count}");
-
-            var items = await _context.WaitingFinancialTables
+            var rawGroups = allRows
                 .GroupBy(w => new { w.DatabaseName, w.SecurityId, w.TemplateId })
-                .Select(g => new WaitingGroup
+                .Select(g => new
                 {
-                    DatabaseName = g.Key.DatabaseName,
-                    SecurityId = g.Key.SecurityId,
-                    TemplateId = g.Key.TemplateId,
-                    SecurityCode = g.First().Username ?? "UNKNOWN",
+                    g.Key.DatabaseName,
+                    g.Key.SecurityId,
+                    g.Key.TemplateId,
                     Items = g.Select(w => new WaitingItem
                     {
                         Quarter = w.Quarter,
                         IsOriginal = w.IsOriginal,
                         Username = w.Username ?? "",
-                        DisclosureId = w.DisclosureId
+                        DisclosureId = w.DisclosureId,
+                        SendEmail = w.SendEmail ?? false
                     }).ToList()
                 })
-                .ToListAsync();
+                .ToList();
 
-            Console.WriteLine($"[DEBUG] Returning {items.Count} groups");
-            return items;
+            Console.WriteLine($"[DEBUG] WaitingFinancialTables: {allRows.Count} rows → {rawGroups.Count} groups");
+
+            // Step 2: Resolve SecurityCode from the correct Security table
+            var turkey107Ids = rawGroups
+                .Where(r => IsTurkeyDb(r.DatabaseName))
+                .Select(r => r.SecurityId).Distinct().ToArray();
+
+            var ms32501Ids = rawGroups
+                .Where(r => IsMsSourceDb(r.DatabaseName))
+                .Select(r => r.SecurityId).Distinct().ToArray();
+
+            Dictionary<int, string> turkey107Codes = new();
+            if (turkey107Ids.Length > 0)
+                turkey107Codes = await _context107.Securities
+                    .Where(s => turkey107Ids.Contains(s.Id) && s.Code != null)
+                    .ToDictionaryAsync(s => s.Id, s => s.Code!);
+
+            Dictionary<int, string> ms32501Codes = new();
+            if (ms32501Ids.Length > 0)
+                ms32501Codes = await _context32501.Securities
+                    .Where(s => ms32501Ids.Contains(s.Id) && s.Code != null)
+                    .ToDictionaryAsync(s => s.Id, s => s.Code!);
+
+            // Step 3: Build final WaitingGroup list with resolved SecurityCode
+            return rawGroups.Select(r =>
+            {
+                var codeLookup =
+                    IsTurkeyDb(r.DatabaseName) ? turkey107Codes :
+                    IsMsSourceDb(r.DatabaseName) ? ms32501Codes :
+                    new Dictionary<int, string>();
+
+                return new WaitingGroup
+                {
+                    DatabaseName = r.DatabaseName,
+                    SecurityId = r.SecurityId,
+                    TemplateId = r.TemplateId,
+                    SecurityCode = codeLookup.GetValueOrDefault(r.SecurityId, $"SEC_{r.SecurityId}"),
+                    Items = r.Items
+                };
+            }).ToList();
         }
 
         public async Task<List<int>> GetTableTypeIdsAsync(
@@ -63,7 +116,7 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
         }
 
         public async Task<int> GetDisclosureQuarterAsync(
-    int securityId, int disclosureId, string databaseName, int templateId)
+            int securityId, int disclosureId, string databaseName, int templateId)
         {
             try
             {
@@ -74,7 +127,7 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
 
                 if (disclosure == null)
                 {
-                    Console.WriteLine($"[WARN] No FinancialTrace found");
+                    Console.WriteLine($"[WARN] No FinancialTrace found for securityId={securityId} disclosureId={disclosureId}");
                     return 1;
                 }
 
@@ -82,42 +135,34 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] {ex.Message}");
+                Console.WriteLine($"[ERROR] GetDisclosureQuarterAsync failed: {ex.Message}");
                 return 1;
             }
         }
 
         public async Task ExecuteSendAsync(
-        string databaseName, int securityId, int quarter, int templateId,
-        int disclosureId, bool isOriginal, List<int> tableTypeIds, bool isInflation)
+            string databaseName, int securityId, int quarter, int templateId,
+            int disclosureId, bool isOriginal, List<int> tableTypeIds, bool isInflation,
+            bool sendEmail)
         {
             try
             {
-                Console.WriteLine($"[INFO] ExecuteSendAsync: Preparing to send data");
-                Console.WriteLine($"  DatabaseName: {databaseName}");
-                Console.WriteLine($"  SecurityId: {securityId}");
-                Console.WriteLine($"  Quarter: {quarter}");
-                Console.WriteLine($"  TemplateId: {templateId}");
-                Console.WriteLine($"  DisclosureId: {disclosureId}");
-                Console.WriteLine($"  IsOriginal: {isOriginal}");
-                Console.WriteLine($"  TableTypeIds: {string.Join(",", tableTypeIds)}");
-                Console.WriteLine($"  IsInflation: {isInflation}");
+                Console.WriteLine($"[INFO] ExecuteSendAsync: {databaseName}/{securityId}/Q{quarter}/T{templateId} " +
+                                  $"TypeIds=[{string.Join(",", tableTypeIds)}] Inflation={isInflation} SendEmail={sendEmail}");
 
-                // TODO: Step 1: FinancialTransactionApi'ye veri gönder
-                // var apiResult = await _financialTransactionApi.SendDataAsync(...);
+                // TODO: Step 1: Call IFinancialTransactionApi (GenerateInflationAsync / GenerateRestatedAsync)
 
-                // TODO: Step 2: Email queue'ya ekle (sendEmail = true ise)
-                // await _emailQueueRepository.EnqueueAsync(...);
+                if (sendEmail)
+                {
+                    var subject = $"Financial Data Sent: {databaseName} / SecurityId={securityId} / Q{quarter}";
+                    var body = $"DatabaseName: {databaseName}\nSecurityId: {securityId}\nQuarter: {quarter}\n" +
+                               $"TemplateId: {templateId}\nDisclosureId: {disclosureId}\nIsOriginal: {isOriginal}";
 
-                // TODO: Step 3: Başarılı olduktan sonra sadece sil
-                // var items = await _context.WaitingFinancialTables
-                //     .Where(w => w.DatabaseName == databaseName && ...)
-                //     .ToListAsync();
-                // _context.WaitingFinancialTables.RemoveRange(items);
-                // await _context.SaveChangesAsync();
+                    await _emailQueueRepository.EnqueueAsync(subject, body, new[] { "admin@example.com" });
+                    Console.WriteLine($"[INFO] EmailQueue: enqueued for {databaseName}/{securityId}/Q{quarter}");
+                }
 
-                Console.WriteLine($"[INFO] ExecuteSendAsync: Data prepared (not sent yet - testing phase)");
-                await Task.CompletedTask;
+                // TODO: Step 3: Delete from WaitingFinancialTables after successful send
             }
             catch (Exception ex)
             {
@@ -130,12 +175,25 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
         {
             try
             {
-                Console.WriteLine($"[DEBUG] WriteHeartbeatAsync called at {DateTime.UtcNow}");
+                const string paramName = "FinancialThrottle_Heartbeat";
+                var param = await _context.UtTrcTracerParams
+                    .FirstOrDefaultAsync(p => p.ParamName == paramName);
 
-                // TODO: Heartbeat tablosuna kayıt yaz veya log dosyasına yaz
-                // Örnek: worker'ın hala çalıştığını göstermek için
+                if (param == null)
+                {
+                    _context.UtTrcTracerParams.Add(new UtTrcTracerParam
+                    {
+                        ParamName = paramName,
+                        StrValue = DateTime.UtcNow.ToString("o")
+                    });
+                }
+                else
+                {
+                    param.StrValue = DateTime.UtcNow.ToString("o");
+                }
 
-                await Task.CompletedTask;
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"[DEBUG] WriteHeartbeatAsync: written at {DateTime.UtcNow:HH:mm:ss}");
             }
             catch (Exception ex)
             {
@@ -147,13 +205,17 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
         {
             try
             {
-                var codes = await _context.WaitingFinancialTables
-                    .Where(w => securityIds.Contains(w.SecurityId))
-                    .Select(w => new { w.SecurityId, w.Username })
-                    .Distinct()
-                    .ToListAsync();
+                var codes107 = await _context107.Securities
+                    .Where(s => securityIds.Contains(s.Id) && s.Code != null)
+                    .ToDictionaryAsync(s => s.Id, s => s.Code!);
 
-                var result = codes.ToDictionary(x => x.SecurityId, x => x.Username ?? "UNKNOWN");
+                var codes32501 = await _context32501.Securities
+                    .Where(s => securityIds.Contains(s.Id) && s.Code != null && !codes107.ContainsKey(s.Id))
+                    .ToDictionaryAsync(s => s.Id, s => s.Code!);
+
+                var result = codes107
+                    .Concat(codes32501)
+                    .ToDictionary(kv => kv.Key, kv => kv.Value);
 
                 Console.WriteLine($"[DEBUG] GetSecurityCodesAsync returning {result.Count} codes");
                 return result;
@@ -164,23 +226,19 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                 return new Dictionary<int, string>();
             }
         }
+
         public async Task<Dictionary<(int securityId, int templateId), int>> GetDuplicateItemCodeMapAsync()
         {
             try
             {
                 var map = await _context.DuplicateTableTemplateMaps
                     .Where(d => d.FromTemplateId.HasValue && d.ToTemplateId.HasValue)
-                    .Select(d => new
-                    {
-                        d.SecurityId,
-                        d.FromTemplateId,
-                        d.ToTemplateId
-                    })
+                    .Select(d => new { d.SecurityId, d.FromTemplateId, d.ToTemplateId })
                     .ToListAsync();
 
                 var result = map.ToDictionary(
-                    x => (x.SecurityId, x.FromTemplateId.Value),
-                    x => x.ToTemplateId.Value);
+                    x => (x.SecurityId, x.FromTemplateId!.Value),
+                    x => x.ToTemplateId!.Value);
 
                 Console.WriteLine($"[DEBUG] GetDuplicateItemCodeMapAsync returning {result.Count} mappings");
                 return result;
@@ -196,31 +254,64 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
         {
             try
             {
-                // TODO: Gerçek implementasyon: ConfigurationTable'dan oku
-                var msSourceIds = new[] { 32501 };
+                var param = await _context.UtTrcTracerParams
+                    .FirstOrDefaultAsync(p => p.ParamName == "ms_source_ids");
 
-                Console.WriteLine($"[DEBUG] GetMsSourceIdsAsync returning: {string.Join(",", msSourceIds)}");
-                return await Task.FromResult(msSourceIds);
+                if (param?.StrValue != null)
+                {
+                    var ids = param.StrValue
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(s => int.TryParse(s.Trim(), out var id) ? id : -1)
+                        .Where(id => id > 0)
+                        .ToArray();
+
+                    if (ids.Length > 0)
+                    {
+                        Console.WriteLine($"[DEBUG] GetMsSourceIdsAsync: {string.Join(",", ids)}");
+                        return ids;
+                    }
+                }
+
+                Console.WriteLine("[WARN] GetMsSourceIdsAsync: 'ms_source_ids' not found, using fallback {32501}");
+                return new[] { 32501 };
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERROR] GetMsSourceIdsAsync failed: {ex.Message}");
-                return new[] { 32501 }; // Default fallback
+                return new[] { 32501 };
             }
         }
+
         public async Task<bool> HasQuarterlyDataAsync(
-                   string databaseName, int securityId, int quarter, int templateId, bool isOriginal)
+            string databaseName, int securityId, int quarter, int templateId, bool isOriginal)
         {
             try
             {
-                var exists = await _context.WaitingFinancialTables
-                    .AnyAsync(w => w.DatabaseName == databaseName &&
-                                   w.SecurityId == securityId &&
-                                   w.Quarter == quarter &&
-                                   w.TemplateId == templateId &&
-                                   w.IsOriginal == isOriginal);
+                bool exists;
 
-                Console.WriteLine($"[DEBUG] HasQuarterlyDataAsync: {databaseName}/{securityId}/Q{quarter}/T{templateId} = {exists}");
+                if (IsTurkeyDb(databaseName))
+                {
+                    exists = isOriginal
+                        ? await _context107.QuarterlyOriginals.AnyAsync(q =>
+                            q.SecurityId == securityId && q.Quarter == quarter && q.TemplateId == templateId)
+                        : await _context107.Quarterlies.AnyAsync(q =>
+                            q.SecurityId == securityId && q.Quarter == quarter && q.TemplateId == templateId);
+                }
+                else if (IsMsSourceDb(databaseName))
+                {
+                    exists = isOriginal
+                        ? await _context32501.QuarterlyOriginals.AnyAsync(q =>
+                            q.SecurityId == securityId && q.Quarter == quarter && q.TemplateId == templateId)
+                        : await _context32501.Quarterlies.AnyAsync(q =>
+                            q.SecurityId == securityId && q.Quarter == quarter && q.TemplateId == templateId);
+                }
+                else
+                {
+                    Console.WriteLine($"[WARN] HasQuarterlyDataAsync: no Quarterly context for db={databaseName}");
+                    return false;
+                }
+
+                Console.WriteLine($"[DEBUG] HasQuarterlyDataAsync: {databaseName}/{securityId}/Q{quarter}/T{templateId} isOriginal={isOriginal} → {exists}");
                 return exists;
             }
             catch (Exception ex)
@@ -234,11 +325,7 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
         {
             try
             {
-                Console.WriteLine($"[DEBUG] WriteAliveSqlAsync called at {DateTime.UtcNow}");
-
-                // TODO: Alive tablosuna kayıt yaz veya güncelle
-                // Örnek: LastAliveTime = DateTime.UtcNow
-
+                Console.WriteLine($"[DEBUG] WriteAliveSqlAsync called at {DateTime.UtcNow:HH:mm:ss}");
                 await Task.CompletedTask;
             }
             catch (Exception ex)

@@ -3,6 +3,7 @@ using FinancialThrottleService.Infrastructure.Logging;
 using FinancialThrottleService.Infrastructure.Models.Generated;
 using FinancialThrottleService.Infrastructure.Models.Generated.RAS;
 using FinancialThrottleService.Infrastructure.Models.Generated.RAS107;
+using FinancialThrottleService.Infrastructure.Models.Generated.RAS32501;
 using FinancialThrottleService.Infrastructure.Persistence.Dummy;
 using FinancialThrottleService.Infrastructure.Persistence.Sql;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,11 @@ namespace FinancialThrottleService.Infrastructure
             services.AddDbContext<RasStajContext>(options =>
                options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
+            services.AddDbContext<RasStaj107Context>(options =>
+               options.UseSqlServer(configuration.GetConnectionString("RasStaj107")));
+
+            services.AddDbContext<RasStaj32501Context>(options =>
+               options.UseSqlServer(configuration.GetConnectionString("RasStaj32501")));
 
             if (useDummyData)
             {
@@ -34,10 +40,10 @@ namespace FinancialThrottleService.Infrastructure
             }
             else
             {
+                services.AddScoped<IEmailQueueRepository, SqlEmailQueueRepository>();
                 services.AddScoped<IFinancialRepository, SqlFinancialRepository>();
-                services.AddSingleton<ISecurityPriorityClient, DummySecurityPriorityClient>();
-                services.AddSingleton<IFinancialTransactionApi, DummyFinancialTransactionApi>();
-                services.AddSingleton<IEmailQueueRepository, DummyEmailQueueRepository>();
+                services.AddScoped<ISecurityPriorityClient, SqlSecurityPriorityClient>();
+                services.AddSingleton<IFinancialTransactionApi, SqlFinancialTransactionApi>();
             }
 
             services.Configure<FinancialThrottleService.Infrastructure.Logging.MongoOptions>(

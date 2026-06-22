@@ -27,7 +27,8 @@ namespace FinancialThrottleService.Application.Interfaces
     int disclosureId,
     bool isOriginal,
     List<int> tableTypeIds,
-    bool isInflationTemplate);
+    bool isInflationTemplate,
+    bool sendEmail);
         Task WriteHeartbeatAsync();
         Task WriteAliveSqlAsync();
         Task<Dictionary<int, string>> GetSecurityCodesAsync(int[] securityIds);
