@@ -1,22 +1,22 @@
 ﻿using FinancialThrottleService.Domain.Models;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace FinancialThrottleService.Application.Interfaces
 {
     public interface ILogRepository
     {
         Task WriteAsync(LogEntry entry);
-        Task<List<LogEntry>> QueryAsync(
-       string date,       
-       string? category, 
-       string? level,  
-       int skip = 0,
-       int take = 100);
-        IAsyncEnumerable<LogEntry> StreamAsync(
-        string date,
-        string? category,
-        CancellationToken ct);
+        Task<LogsResponse> GetLogsByDateAsync(DateTime date);
+        Task<LogsResponse> GetLogsByDateAndCategoryAsync(DateTime date, string category);
+        Task<LogsResponse> GetLogsByDateAndLevelAsync(DateTime date, string level);
+    }
+
+   
+    public class LogsResponse
+    {
+        public List<LogEntry> Logs { get; set; } = new();
+        public int TotalCount { get; set; }
+        public string Date { get; set; } = string.Empty;
+        public string? Category { get; set; }
+        public string? Level { get; set; }
     }
 }

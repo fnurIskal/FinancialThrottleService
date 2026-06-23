@@ -9,30 +9,29 @@ using FinancialThrottleService.Infrastructure.Persistence.Sql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Driver;
+
 namespace FinancialThrottleService.Infrastructure
-
 {
-
     public static class DependencyInjection
     {
         public static IServiceCollection AddInfrastructure(
-       this IServiceCollection services,
-       IConfiguration configuration)
+            this IServiceCollection services,
+            IConfiguration configuration)
         {
             var useDummyData = configuration.GetValue<bool>("ThrottleOptions:UseDummyData");
 
             services.AddDbContext<RasStajContext>(options =>
-               options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
             services.AddDbContext<RasStaj107Context>(options =>
-               options.UseSqlServer(configuration.GetConnectionString("RasStaj107")));
+                options.UseSqlServer(configuration.GetConnectionString("RasStaj107")));
 
             services.AddDbContext<RasStaj32501Context>(options =>
-               options.UseSqlServer(configuration.GetConnectionString("RasStaj32501")));
+                options.UseSqlServer(configuration.GetConnectionString("RasStaj32501")));
 
             if (useDummyData)
             {
-                // Geliştirme ortamı — sahte implementasyonlar
                 services.AddSingleton<IFinancialRepository, DummyFinancialRepository>();
                 services.AddSingleton<ISecurityPriorityClient, DummySecurityPriorityClient>();
                 services.AddSingleton<IFinancialTransactionApi, DummyFinancialTransactionApi>();
@@ -46,8 +45,17 @@ namespace FinancialThrottleService.Infrastructure
                 services.AddSingleton<IFinancialTransactionApi, SqlFinancialTransactionApi>();
             }
 
-            services.Configure<FinancialThrottleService.Infrastructure.Logging.MongoOptions>(
-      options => configuration.GetSection("MongoDB").Bind(options));
+            var mongoConnectionString = configuration.GetConnectionString("MongoDB")
+                ?? "mongodb://localhost:27017";
+
+            var mongoDatabaseName = configuration["Mongo:DatabaseName"]
+                ?? "financial_throttle_logs";
+
+            services.AddSingleton<IMongoClient>(sp =>
+                new MongoClient(mongoConnectionString));
+
+            services.AddSingleton<IMongoDatabase>(sp =>
+                sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDatabaseName));
 
             services.AddSingleton<ILogRepository, MongoLogRepository>();
 
