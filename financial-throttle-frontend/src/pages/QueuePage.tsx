@@ -6,12 +6,13 @@ import Header from "../components/layout/Header";
 import Badge from "../components/ui/Badge";
 import Spinner from "../components/ui/Spinner";
 import GroupDetailModal from "../components/modals/GroupDetailModal";
-import toast from "react-hot-toast";
+
 
 const PAGE_SIZE = 15;
 
 export default function QueuePage() {
   const [groups, setGroups] = useState<WaitingGroup[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const [loadedRevision, setLoadedRevision] = useState<number | null>(null);
   const [search, setSearch] = useState("");
@@ -19,6 +20,7 @@ export default function QueuePage() {
   const [page, setPage] = useState(1);
   const [selectedGroup, setSelectedGroup] = useState<WaitingGroup | null>(null);
 
+  const isInitialLoad = loadedRevision === null;
   const loading = loadedRevision !== revision;
   const refresh = useCallback(() => setRevision((r) => r + 1), []);
 
@@ -27,13 +29,14 @@ export default function QueuePage() {
     fetchQueue()
       .then((data) => {
         if (!cancelled) {
-          setGroups(data.groups);
+          setGroups(data.groups ?? []);
+          setFetchError(null);
           setLoadedRevision(revision);
         }
       })
       .catch(() => {
         if (!cancelled) {
-          toast.error("Failed to load queue");
+          setFetchError("Could not load queue — Worker may be down or DB unreachable");
           setLoadedRevision(revision);
         }
       });
@@ -108,7 +111,16 @@ export default function QueuePage() {
 
         {/* Table */}
         <div className="card flex-1 overflow-x-auto">
-          {loading ? (
+          {isInitialLoad ? (
+            <div className="flex justify-center py-16">
+              <Spinner />
+            </div>
+          ) : fetchError ? (
+            <div className="flex flex-col items-center py-16 gap-2">
+              <p className="text-sm text-red-500 font-medium">{fetchError}</p>
+              <p className="text-xs text-gray-400">Check that the Worker container is running and the database is reachable.</p>
+            </div>
+          ) : loading ? (
             <div className="flex justify-center py-16">
               <Spinner />
             </div>

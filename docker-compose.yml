@@ -36,6 +36,8 @@ services:
       - DOTNET_ENVIRONMENT=Development
       - ThrottleOptions__UseDummyData=false
       - ConnectionStrings__DefaultConnection=Server=localhost;Database=RAS_STAJ;User Id=sqlserver;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
+      - ConnectionStrings__RasStaj107=Server=localhost;Database=RAS_STAJ107;User Id=sqlserver;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
+      - ConnectionStrings__RasStaj32501=Server=localhost;Database=RAS_STAJ32501;User Id=sqlserver;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
     depends_on:
       sqlserver:
         condition: service_started

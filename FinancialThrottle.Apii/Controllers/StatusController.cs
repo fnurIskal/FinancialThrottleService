@@ -25,7 +25,15 @@ namespace FinancialThrottle.Apii.Controllers
             try
             {
                 var response = await _grpcClient.GetStatusAsync(new StatusRequest());
-                return Ok(response);
+                return Ok(new
+                {
+                    isRunning = response.IsRunning,
+                    queuedCount = response.QueuedCount,
+                    suspendedCount = response.SuspendedCount,
+                    processedThisCycle = response.ProcessedThisCycle,
+                    lastHeartbeatUtc = response.LastHeartbeatUtc,
+                    workerStartedUtc = response.WorkerStartedUtc
+                });
             }
             catch (Exception ex)
             {

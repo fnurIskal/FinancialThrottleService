@@ -25,19 +25,36 @@ namespace FinancialThrottle.Apii.Controllers
             try
             {
                 var response = await _grpcClient.GetQueueAsync(new QueueRequest());
-                return Ok(response);  
+                return Ok(new
+                {
+                    groups = response.Groups.Select(g => new
+                    {
+                        databaseName = g.DatabaseName,
+                        securityId = g.SecurityId,
+                        templateId = g.TemplateId,
+                        securityCode = g.SecurityCode,
+                        priorityScore = g.PriorityScore,
+                        itemCount = g.ItemCount,
+                        items = g.Items.Select(i => new
+                        {
+                            quarter = i.Quarter,
+                            isOriginal = i.IsOriginal,
+                            username = i.Username,
+                            disclosureId = i.DisclosureId
+                        }).ToList()
+                    }).ToList()
+                });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to retrieve queue");
                 return StatusCode(500, new { error = "Failed to retrieve queue information", detail = ex.Message, type = ex.GetType().Name });
             }
-
         }
 
         [HttpGet("{db}/{securityId}/{templateId}")]
         public async Task<IActionResult> GetQueueDetail(
-     string db, int securityId, int templateId)
+            string db, int securityId, int templateId)
         {
             try
             {
@@ -51,7 +68,22 @@ namespace FinancialThrottle.Apii.Controllers
                 if (group is null)
                     return NotFound(new { error = $"Group not found: {db}|{securityId}|{templateId}" });
 
-                return Ok(group);
+                return Ok(new
+                {
+                    databaseName = group.DatabaseName,
+                    securityId = group.SecurityId,
+                    templateId = group.TemplateId,
+                    securityCode = group.SecurityCode,
+                    priorityScore = group.PriorityScore,
+                    itemCount = group.ItemCount,
+                    items = group.Items.Select(i => new
+                    {
+                        quarter = i.Quarter,
+                        isOriginal = i.IsOriginal,
+                        username = i.Username,
+                        disclosureId = i.DisclosureId
+                    }).ToList()
+                });
             }
             catch (Exception ex)
             {

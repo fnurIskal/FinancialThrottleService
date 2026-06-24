@@ -36,7 +36,7 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
         {
             IsRunning = true,
             LastHeartbeatUtc = Worker.LastHeartbeat.ToString("O"),
-            QueuedCount = 0,
+            QueuedCount = Worker.LastQueuedCount,
             SuspendedCount = _retryTracker.GetSuspendedKeys().Count,
             ProcessedThisCycle = Worker.ProcessedThisCycle,
             WorkerStartedUtc = Worker.StartedAt.ToString("O")

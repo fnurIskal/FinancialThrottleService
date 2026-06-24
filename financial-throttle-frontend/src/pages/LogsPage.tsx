@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   Download,
   Search,
@@ -328,8 +328,6 @@ export default function LogsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [revision, setRevision] = useState(0);
-
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   // 300 ms debounce on search
@@ -345,8 +343,8 @@ export default function LogsPage() {
   // Derive loading: true whenever the current fetch params differ from what was last resolved.
   // This avoids calling setLoading(true) synchronously inside an effect.
   const currentParams = useMemo(
-    () => `${date}|${effectiveCategory}|${effectiveLevel}|${revision}`,
-    [date, effectiveCategory, effectiveLevel, revision],
+    () => `${date}|${effectiveCategory}|${effectiveLevel}`,
+    [date, effectiveCategory, effectiveLevel],
   );
   const loading = loadedParams !== currentParams;
 
@@ -371,8 +369,6 @@ export default function LogsPage() {
       cancelled = true;
     };
   }, [currentParams, date, effectiveCategory, effectiveLevel]);
-
-  const refresh = useCallback(() => setRevision((r) => r + 1), []);
 
   // Client-side: cross-filter when both category and level are active simultaneously
   const filtered = useMemo(() => {

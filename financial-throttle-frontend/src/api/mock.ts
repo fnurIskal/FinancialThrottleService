@@ -3,8 +3,8 @@ import type {
   StatusResponse,
   LogsResponse,
   SuspendedResponse,
-  ProcessResponse,
   RetryResponse,
+  ProcessResponse,
 } from "../types";
 
 const delay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
@@ -16,7 +16,6 @@ export const mockQueue: QueueResponse = {
       securityId: 282,
       templateId: 21,
       securityCode: "THYAO",
-      priorityScore: 1.0,
       itemCount: 2,
       items: [
         {
@@ -38,7 +37,6 @@ export const mockQueue: QueueResponse = {
       securityId: 292,
       templateId: 21,
       securityCode: "SASA",
-      priorityScore: 0.5,
       itemCount: 1,
       items: [
         {
@@ -54,7 +52,6 @@ export const mockQueue: QueueResponse = {
       securityId: 50,
       templateId: 241,
       securityCode: "MSSTOCK",
-      priorityScore: 0.0,
       itemCount: 1,
       items: [
         {
@@ -70,7 +67,6 @@ export const mockQueue: QueueResponse = {
       securityId: 346,
       templateId: 21,
       securityCode: "AKBNK",
-      priorityScore: 0.0,
       itemCount: 2,
       items: [
         {
@@ -92,7 +88,6 @@ export const mockQueue: QueueResponse = {
       securityId: 101,
       templateId: 31,
       securityCode: "EREGL",
-      priorityScore: 0.75,
       itemCount: 3,
       items: [
         {

@@ -75,4 +75,11 @@ export interface RetryResponse {
   nextRetryTime: string;
 }
 
+export interface ProcessResponse {
+  success: boolean;
+  message: string;
+  groupKey: string;
+  timestamp: string;
+}
+
 export type Page = 'dashboard' | 'queue' | 'suspended' | 'logs' | 'settings';

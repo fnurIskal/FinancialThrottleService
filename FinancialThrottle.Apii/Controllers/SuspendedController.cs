@@ -26,7 +26,21 @@ namespace FinancialThrottle.Apii.Controllers
             try
             {
                 var response = await _grpcClient.GetSuspendedAsync(new SuspendedRequest());
-                return Ok(new { totalCount = response.Groups.Count, groups = response.Groups });
+                return Ok(new
+                {
+                    totalCount = response.Groups.Count,
+                    groups = response.Groups.Select(g => new
+                    {
+                        databaseName = g.DatabaseName,
+                        securityId = g.SecurityId,
+                        templateId = g.TemplateId,
+                        securityCode = g.SecurityCode,
+                        failureCount = g.FailureCount,
+                        firstFailedUtc = g.FirstFailedUtc,
+                        nextRetryUtc = g.NextRetryUtc,
+                        retryInProgress = g.RetryInProgress
+                    }).ToList()
+                });
             }
             catch (Exception ex)
             {

@@ -114,6 +114,7 @@ namespace FinancialThrottle.Worker
                 });
 
                 var allGroups = await repository.GetAllWaitingGroupsAsync();
+                Interlocked.Exchange(ref _lastQueuedCount, allGroups.Count);
                 _logger.LogInformation("Kuyrukta {Count} grup bulundu", allGroups.Count);
 
                 await _logRepository.WriteAsync(new LogEntry
@@ -629,6 +630,9 @@ namespace FinancialThrottle.Worker
 
         private static int _processedThisCycle;
         public static int ProcessedThisCycle => _processedThisCycle;
+
+        private static int _lastQueuedCount;
+        public static int LastQueuedCount => _lastQueuedCount;
     }
 
 }
