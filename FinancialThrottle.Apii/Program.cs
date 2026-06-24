@@ -1,6 +1,5 @@
 using FinancialThrottle.Grpc;
 using FinancialThrottleService.Infrastructure;
-using FinancialThrottleService.Infrastructure.Models.Generated;
 using FinancialThrottleService.Infrastructure.Models.Generated.RAS;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
@@ -10,9 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
               .AllowAnyHeader()
-              .AllowAnyMethod());
+              .AllowAnyMethod()
+              .AllowCredentials());
 });
 
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -28,10 +28,7 @@ builder.Services.AddGrpcClient<ThrottleService.ThrottleServiceClient>(o =>
 builder.Services.AddDbContext<RasStajContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddControllers();
-
-
-// Swagger
+// Swagger Yapılandırması
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -59,7 +56,7 @@ if (app.Environment.IsDevelopment())
         options.RoutePrefix = string.Empty;
     });
 }
-//app.UseHttpsRedirection();
+
 app.UseCors("Frontend");
 app.MapControllers();
 

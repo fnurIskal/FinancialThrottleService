@@ -102,29 +102,47 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
         return response;
     }
 
-    public override Task<SuspendedResponse> GetSuspended(
-        SuspendedRequest request,
-        ServerCallContext context)
+    public override async Task<SuspendedResponse> GetSuspended(
+           SuspendedRequest request,
+           ServerCallContext context)
     {
-        var suspendedKeys = _retryTracker.GetSuspendedKeys();
+        var suspendedGroups = _retryTracker.GetSuspendedGroups();
         var response = new SuspendedResponse();
 
-        foreach (var key in suspendedKeys)
+        var securityIds = suspendedGroups.Select(g => g.SecurityId).Distinct().ToArray();
+        Dictionary<int, string> securityCodes = new();
+        if (securityIds.Length > 0)
         {
+            try
+            {
+                securityCodes = await _repository.GetSecurityCodesAsync(securityIds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not resolve security codes for suspended groups");
+            }
+        }
+
+        foreach (var group in suspendedGroups)
+        {
+            var resolvedCode = securityCodes.TryGetValue(group.SecurityId, out var code)
+                ? code
+                : $"SEC_{group.SecurityId}";
+
             response.Groups.Add(new SuspendedGroupMessage
             {
-                DatabaseName = key.Split('|')[0],
-                SecurityId = int.Parse(key.Split('|')[1]),
-                TemplateId = int.Parse(key.Split('|')[2]),
-                SecurityCode = key,
-                FailureCount = 0,
-                FirstFailedUtc = DateTime.UtcNow.ToString("O"),
-                NextRetryUtc = DateTime.UtcNow.ToString("O"),
-                RetryInProgress = false
+                DatabaseName = group.DatabaseName,
+                SecurityId = group.SecurityId,
+                TemplateId = group.TemplateId,
+                SecurityCode = resolvedCode,
+                FailureCount = group.FailureCount,
+                FirstFailedUtc = group.FirstFailedAt.ToString("O"),
+                NextRetryUtc = group.NextRetryAt.ToString("O"),
+                RetryInProgress = group.RetryInProgress
             });
         }
 
-        return Task.FromResult(response);
+        return response;
     }
 
     public override Task<RetryGroupResponse> RetryGroup(

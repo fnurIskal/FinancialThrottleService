@@ -45,10 +45,11 @@ namespace FinancialThrottleService.Infrastructure
                 services.AddSingleton<IFinancialTransactionApi, SqlFinancialTransactionApi>();
             }
 
-            var mongoConnectionString = configuration.GetConnectionString("MongoDB")
+            var mongoSection = configuration.GetSection("MongoDB");
+            var mongoConnectionString = mongoSection["ConnectionString"]
                 ?? "mongodb://localhost:27017";
 
-            var mongoDatabaseName = configuration["Mongo:DatabaseName"]
+            var mongoDatabaseName = mongoSection["DatabaseName"]
                 ?? "financial_throttle_logs";
 
             services.AddSingleton<IMongoClient>(sp =>

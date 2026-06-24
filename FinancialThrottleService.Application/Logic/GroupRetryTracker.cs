@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Text;
+using System.Linq;
 
 namespace FinancialThrottleService.Application.Logic
 {
@@ -14,19 +14,28 @@ namespace FinancialThrottleService.Application.Logic
 
         private static readonly TimeSpan[] RetrySchedule =
         {
-        TimeSpan.FromMinutes(5),
-        TimeSpan.FromMinutes(15),
-        TimeSpan.FromMinutes(30),
-        TimeSpan.FromMinutes(60),
-        TimeSpan.FromHours(3),
-        TimeSpan.FromHours(6),
-        TimeSpan.FromDays(1)
-    };
+            TimeSpan.FromMinutes(5),
+            TimeSpan.FromMinutes(15),
+            TimeSpan.FromMinutes(30),
+            TimeSpan.FromMinutes(60),
+            TimeSpan.FromHours(3),
+            TimeSpan.FromHours(6),
+            TimeSpan.FromDays(1)
+        };
+
         public bool RecordFailure(string groupKey)
         {
-            var state = _states.GetOrAdd(groupKey, _ => new GroupRetryState
+            var state = _states.GetOrAdd(groupKey, key =>
             {
-                FirstFailedAt = DateTime.UtcNow
+                var parts = key.Split('|');
+                return new GroupRetryState
+                {
+                    FirstFailedAt = DateTime.UtcNow,
+                    DatabaseName = parts.Length > 0 ? parts[0] : string.Empty,
+                    SecurityId = parts.Length > 1 && int.TryParse(parts[1], out var sid) ? sid : 0,
+                    TemplateId = parts.Length > 2 && int.TryParse(parts[2], out var tid) ? tid : 0,
+                    SecurityCode = string.Empty // security_code gRPC servis katmanında repository'den çözümlenecek
+                };
             });
 
             lock (state)
@@ -38,7 +47,7 @@ namespace FinancialThrottleService.Application.Logic
                     state.IsSuspended = true;
                     state.SuspendRetryIndex = 0;
                     state.NextRetryAt = DateTime.UtcNow.Add(RetrySchedule[0]);
-                    return true; 
+                    return true;
                 }
             }
 
@@ -55,6 +64,7 @@ namespace FinancialThrottleService.Application.Logic
             if (_states.TryGetValue(groupKey, out var state))
                 lock (state) { state.RetryInProgress = true; }
         }
+
         public void RecordSuspendRetryFailure(string groupKey)
         {
             if (!_states.TryGetValue(groupKey, out var state)) return;

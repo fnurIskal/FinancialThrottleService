@@ -10,6 +10,13 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5059
       - GrpcWorker__Url=http://worker:5000
+      # SQL Server Bağlantılarını Docker Ağındaki Servise (financial-throttle-sqlserver) Yönlendiriyoruz:
+      - ConnectionStrings__DefaultConnection=Server=financial-throttle-sqlserver;Database=RAS_STAJ;User Id=sa;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
+      - ConnectionStrings__RasStaj107=Server=financial-throttle-sqlserver;Database=RAS_STAJ107;User Id=sa;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
+      - ConnectionStrings__RasStaj32501=Server=financial-throttle-sqlserver;Database=RAS_STAJ32501;User Id=sa;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
+      # MongoDB Bağlantısını Docker Ağındaki Servise (financial-throttle-mongodb) Yönlendiriyoruz:
+      - MongoDB__ConnectionString=mongodb://localhost:27017
+      - MongoDB__DatabaseName=financial_throttle_logs
     depends_on:
       - sqlserver
       - mongodb
@@ -31,6 +38,18 @@ services:
         condition: service_started
       mongodb:
         condition: service_started
+    networks:
+      - financial-throttle-network
+
+  frontend:
+    build:
+      context: ./financial-throttle-frontend
+      dockerfile: ../Dockerfile.frontend
+    container_name: financial-throttle-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
     networks:
       - financial-throttle-network
 
