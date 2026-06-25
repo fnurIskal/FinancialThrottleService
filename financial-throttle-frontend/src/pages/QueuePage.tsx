@@ -7,7 +7,6 @@ import Badge from "../components/ui/Badge";
 import Spinner from "../components/ui/Spinner";
 import GroupDetailModal from "../components/modals/GroupDetailModal";
 
-
 const PAGE_SIZE = 15;
 
 export default function QueuePage() {
@@ -29,18 +28,25 @@ export default function QueuePage() {
     fetchQueue()
       .then((data) => {
         if (!cancelled) {
-          setGroups(data.groups ?? []);
+          console.log("Backend'den Gelen Ham Veri:", data); // Veri yapısını kontrol edelim
+          setGroups(data?.groups ?? []); // Güvenli okuma için ?. ekledik
           setFetchError(null);
           setLoadedRevision(revision);
         }
       })
-      .catch(() => {
+      .catch((error) => {
+        // Hatayı parametre olarak aldık
         if (!cancelled) {
-          setFetchError("Could not load queue — Worker may be down or DB unreachable");
+          console.error("fetchQueue Patlama Nedeni:", error); // Gerçek hatayı konsola basıyoruz
+          setFetchError(
+            "Could not load queue — Worker may be down or DB unreachable",
+          );
           setLoadedRevision(revision);
         }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [revision]);
 
   const databases = useMemo(
@@ -118,7 +124,10 @@ export default function QueuePage() {
           ) : fetchError ? (
             <div className="flex flex-col items-center py-16 gap-2">
               <p className="text-sm text-red-500 font-medium">{fetchError}</p>
-              <p className="text-xs text-gray-400">Check that the Worker container is running and the database is reachable.</p>
+              <p className="text-xs text-gray-400">
+                Check that the Worker container is running and the database is
+                reachable.
+              </p>
             </div>
           ) : loading ? (
             <div className="flex justify-center py-16">

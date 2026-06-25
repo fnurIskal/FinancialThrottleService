@@ -78,7 +78,13 @@ export default function DashboardStats({ status }: DashboardStatsProps) {
             </span>
           )
         }
-        description="Active right now"
+        description={
+          status === null
+            ? "Checking worker status…"
+            : isRunning
+            ? "Active right now"
+            : "Worker is not responding"
+        }
       />
 
       <MetricCard

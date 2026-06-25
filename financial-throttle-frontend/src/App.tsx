@@ -22,7 +22,7 @@ export default function App() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-gray-50">
+    <div className="flex h-screen w-full overflow-hidden bg-white">
       <Sidebar activePage={activePage} onNavigate={setActivePage} />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
