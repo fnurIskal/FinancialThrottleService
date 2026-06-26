@@ -106,9 +106,11 @@ docker-compose up --build
 
 **Services:**
 
+- Frontend: http://localhost:3000
 - Swagger UI: http://localhost:5059
 - API Status: http://localhost:5059/api/status
 - API Queue: http://localhost:5059/api/queue
+
 
 ### Useful Commands
 
