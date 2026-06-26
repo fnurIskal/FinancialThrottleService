@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Search, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
-import { fetchQueue } from "../api/endpoints";
+import { fetchQueue, forceSendSuspended } from "../api/endpoints";
 import type { WaitingGroup } from "../types";
 import Header from "../components/layout/Header";
 import Badge from "../components/ui/Badge";
 import { TableShimmer } from "../components/ui/TableShimmer";
 import GroupDetailModal from "../components/modals/GroupDetailModal";
+import ForceSendConfirmModal from "../components/modals/ForceSendConfirmModal";
+import toast from "react-hot-toast";
 
 const PAGE_SIZE = 15;
 
@@ -18,6 +20,8 @@ export default function QueuePage() {
   const [filterDb, setFilterDb] = useState("all");
   const [page, setPage] = useState(1);
   const [selectedGroup, setSelectedGroup] = useState<WaitingGroup | null>(null);
+  const [forceSendGroup, setForceSendGroup] = useState<WaitingGroup | null>(null);
+  const [forceSending, setForceSending] = useState<string | null>(null);
 
   const isInitialLoad = loadedRevision === null;
   const loading = loadedRevision !== revision;
@@ -67,6 +71,22 @@ export default function QueuePage() {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const handleForceSend = async (g: WaitingGroup) => {
+    const key = `${g.databaseName}-${g.securityId}-${g.templateId}`;
+    setForceSendGroup(null);
+    setForceSending(key);
+    const toastId = toast.loading(`Force sending ${g.securityCode}...`);
+    try {
+      await forceSendSuspended(g.databaseName, g.securityId, g.templateId);
+      toast.success("Force send scheduled", { id: toastId });
+      refresh();
+    } catch {
+      toast.error("Force send failed", { id: toastId });
+    } finally {
+      setForceSending(null);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -121,7 +141,7 @@ export default function QueuePage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-gray-100">
-                  {["Database", "Security Code", "Template", "Items", "Actions"].map((h) => (
+                  {["Database", "Security Code", "Template", "Items", "Status", "Actions"].map((h) => (
                     <th key={h} className="text-left text-gray-400 font-medium py-2 pr-4">{h}</th>
                   ))}
                 </tr>
@@ -132,6 +152,7 @@ export default function QueuePage() {
                   { widthClass: "w-1/2" },
                   { widthClass: "w-1/4" },
                   { widthClass: "w-8" },
+                  { widthClass: "w-14" },
                   { widthClass: "w-14" },
                 ]} />
               </tbody>
@@ -157,6 +178,7 @@ export default function QueuePage() {
                     "Security Code",
                     "Template",
                     "Items",
+                    "Status",
                     "Actions",
                   ].map((h) => (
                     <th
@@ -184,6 +206,19 @@ export default function QueuePage() {
                     <td className="py-3 pr-4">
                       <Badge variant="info">{g.itemCount}</Badge>
                     </td>
+                    <td className="py-3 pr-4">
+                      <Badge
+                        variant={
+                          g.status === "suspended" ? "danger"
+                          : g.status === "waiting" ? "warning"
+                          : "success"
+                        }
+                      >
+                        {g.status === "suspended" ? "Suspended"
+                         : g.status === "waiting" ? "Waiting"
+                         : "Queued"}
+                      </Badge>
+                    </td>
                     <td className="py-3">
                       <div className="flex gap-2">
                         <button
@@ -192,6 +227,15 @@ export default function QueuePage() {
                         >
                           View
                         </button>
+                        {g.status === "waiting" && (
+                          <button
+                            onClick={() => setForceSendGroup(g)}
+                            disabled={forceSending === `${g.databaseName}-${g.securityId}-${g.templateId}`}
+                            className="btn-danger text-xs px-3 py-1.5"
+                          >
+                            Force Send
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -244,6 +288,12 @@ export default function QueuePage() {
       <GroupDetailModal
         group={selectedGroup}
         onClose={() => setSelectedGroup(null)}
+      />
+
+      <ForceSendConfirmModal
+        group={forceSendGroup}
+        onClose={() => setForceSendGroup(null)}
+        onConfirm={() => forceSendGroup && handleForceSend(forceSendGroup)}
       />
     </div>
   );

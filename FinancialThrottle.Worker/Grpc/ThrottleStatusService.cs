@@ -84,7 +84,10 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
                 SecurityCode = group.SecurityCode,
                 ItemCount = group.Items.Count,
                 PriorityScore = priorityScores.GetValueOrDefault(group.SecurityCode, 0.0),
-                OrderType = group.OrderType
+                OrderType = group.OrderType,
+                Status = _retryTracker.IsSuspended(group.GroupKey) ? "suspended"
+                       : _retryTracker.IsWaiting(group.GroupKey) ? "waiting"
+                       : "queued"
             };
 
             foreach (var item in group.Items)

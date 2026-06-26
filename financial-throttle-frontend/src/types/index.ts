@@ -13,6 +13,7 @@ export interface WaitingGroup {
   itemCount: number;
   items: WaitingItem[];
   orderType?: number;
+  status?: string;
 }
 
 export interface QueueResponse {

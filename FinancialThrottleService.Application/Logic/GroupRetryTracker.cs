@@ -10,6 +10,7 @@ namespace FinancialThrottleService.Application.Logic
     {
         private readonly ConcurrentDictionary<string, GroupRetryState> _states = new();
         private readonly ConcurrentDictionary<string, bool> _forceSendKeys = new();
+        private readonly ConcurrentDictionary<string, bool> _waitingKeys = new();
 
         private const int MaxAttempts = 10;
 
@@ -65,6 +66,10 @@ namespace FinancialThrottleService.Application.Logic
         public bool IsForceSend(string groupKey) => _forceSendKeys.ContainsKey(groupKey);
 
         public void ClearForceSend(string groupKey) => _forceSendKeys.TryRemove(groupKey, out _);
+
+        public void RecordWait(string groupKey) => _waitingKeys[groupKey] = true;
+        public void ClearWait(string groupKey) => _waitingKeys.TryRemove(groupKey, out _);
+        public bool IsWaiting(string groupKey) => _waitingKeys.ContainsKey(groupKey);
 
         public void ForceRetry(string groupKey)
         {

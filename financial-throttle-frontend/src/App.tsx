@@ -27,7 +27,7 @@ export default function App() {
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Suspense fallback={<PageLoader />}>
-          {activePage === 'dashboard' && <DashboardPage />}
+          {activePage === 'dashboard' && <DashboardPage onNavigate={setActivePage} />}
           {activePage === 'queue' && <QueuePage />}
           {activePage === 'suspended' && <SuspendedPage />}
           {activePage === 'logs' && <LogsPage />}

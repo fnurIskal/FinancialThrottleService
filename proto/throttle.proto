@@ -41,6 +41,7 @@ message WaitingGroupMessage {
     int32  item_count     = 6;
     repeated WaitingItemMessage items = 7;
     int32  order_type     = 8;
+    string status         = 9;
 }
 
 message WaitingItemMessage {

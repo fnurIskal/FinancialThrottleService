@@ -1,9 +1,9 @@
 import { AlertTriangle } from 'lucide-react';
-import type { SuspendedGroup } from '../../types';
+import type { SuspendedGroup, WaitingGroup } from '../../types';
 import Modal from '../ui/Modal';
 
 interface Props {
-  group: SuspendedGroup | null;
+  group: SuspendedGroup | WaitingGroup | null;
   onClose: () => void;
   onConfirm: () => void;
   loading?: boolean;

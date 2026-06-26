@@ -1,5 +1,5 @@
 import { Play, Clock, PauseCircle, Activity } from "lucide-react";
-import type { StatusResponse } from "../../types";
+import type { StatusResponse, Page } from "../../types";
 
 function formatHeartbeat(iso: string): string {
   try {
@@ -16,15 +16,18 @@ interface MetricCardProps {
   label: string;
   value: React.ReactNode;
   description: string;
+  onClick?: () => void;
 }
 
-function MetricCard({ icon, iconBg, label, value, description }: MetricCardProps) {
+function MetricCard({ icon, iconBg, label, value, description, onClick }: MetricCardProps) {
   return (
     <div
+      onClick={onClick}
       className="bg-white rounded-2xl p-5 flex flex-col gap-3 hover:-translate-y-0.5 transition-transform"
       style={{
         boxShadow: "0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04)",
         border: "1px solid #f0f0f0",
+        cursor: onClick ? "pointer" : undefined,
       }}
     >
       <div className="flex items-center gap-2.5">
@@ -52,9 +55,10 @@ function MetricCard({ icon, iconBg, label, value, description }: MetricCardProps
 
 interface DashboardStatsProps {
   status: StatusResponse | null;
+  onNavigate: (page: Page) => void;
 }
 
-export default function DashboardStats({ status }: DashboardStatsProps) {
+export default function DashboardStats({ status, onNavigate }: DashboardStatsProps) {
   const isRunning = status?.isRunning;
 
   return (
@@ -91,6 +95,7 @@ export default function DashboardStats({ status }: DashboardStatsProps) {
         icon={<Clock size={17} className="text-amber-500" />}
         iconBg="bg-amber-50"
         label="Pending Groups"
+        onClick={() => onNavigate('queue')}
         value={
           status === null ? (
             <span className="text-gray-300">—</span>
@@ -105,6 +110,7 @@ export default function DashboardStats({ status }: DashboardStatsProps) {
         icon={<PauseCircle size={17} className="text-red-500" />}
         iconBg="bg-red-50"
         label="Suspended"
+        onClick={() => onNavigate('suspended')}
         value={
           status === null ? (
             <span className="text-gray-300">—</span>

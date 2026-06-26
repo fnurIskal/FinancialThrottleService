@@ -35,6 +35,8 @@ namespace FinancialThrottle.Apii.Controllers
                         securityCode = g.SecurityCode,
                         priorityScore = g.PriorityScore,
                         itemCount = g.ItemCount,
+                        orderType = g.OrderType,
+                        status = g.Status,
                         items = g.Items.Select(i => new
                         {
                             quarter = i.Quarter,
@@ -75,7 +77,7 @@ namespace FinancialThrottle.Apii.Controllers
                     templateId = group.TemplateId,
                     securityCode = group.SecurityCode,
                     priorityScore = group.PriorityScore,
-                    itemCount = group.ItemCount,
+                    itemCount = group.ItemCount, 
                     items = group.Items.Select(i => new
                     {
                         quarter = i.Quarter,

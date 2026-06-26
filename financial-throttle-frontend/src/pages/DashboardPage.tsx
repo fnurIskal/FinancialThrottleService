@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { RefreshCw } from "lucide-react";
 import { fetchStatus, fetchQueue } from "../api/endpoints";
-import type { StatusResponse, WaitingGroup } from "../types";
+import type { StatusResponse, WaitingGroup, Page } from "../types";
 import Header from "../components/layout/Header";
 import Badge from "../components/ui/Badge";
 import DashboardStats from "../components/ui/DashboardStats";
@@ -17,7 +17,11 @@ function formatTime(iso: string) {
   }
 }
 
-export default function DashboardPage() {
+interface DashboardPageProps {
+  onNavigate: (page: Page) => void;
+}
+
+export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [groups, setGroups] = useState<WaitingGroup[]>([]);
   const [queueError, setQueueError] = useState<string | null>(null);
@@ -74,7 +78,7 @@ export default function DashboardPage() {
 
       <div className="flex-1 p-6 space-y-6 overflow-y-auto">
         {/* Status cards */}
-        <DashboardStats status={status} />
+        <DashboardStats status={status} onNavigate={onNavigate} />
 
         {/* Last 5 processed groups */}
         <div className="card">
@@ -162,7 +166,17 @@ export default function DashboardPage() {
                         <Badge variant="info">{g.itemCount}</Badge>
                       </td>
                       <td className="py-3">
-                        <Badge variant="success">Queued</Badge>
+                        <Badge
+                          variant={
+                            g.status === "suspended" ? "danger"
+                            : g.status === "waiting" ? "warning"
+                            : "success"
+                          }
+                        >
+                          {g.status === "suspended" ? "Suspended"
+                           : g.status === "waiting" ? "Waiting"
+                           : "Queued"}
+                        </Badge>
                       </td>
                     </tr>
                   ))}

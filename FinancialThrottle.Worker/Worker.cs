@@ -324,6 +324,7 @@ namespace FinancialThrottle.Worker
                     switch (condition)
                     {
                         case SendCondition.Send:
+                            _retryTracker.ClearWait(group.GroupKey);
                             await SendGroupAsync(group, item, tableTypeIds,
                                 repository, duplicateMap, isForceSend);
                             if (!isForceSend) _retryTracker.RecordSuccess(group.GroupKey);
@@ -345,6 +346,7 @@ namespace FinancialThrottle.Worker
                             break;
 
                         case SendCondition.Wait:
+                            _retryTracker.RecordWait(group.GroupKey);
                             _logger.LogDebug(
                                 "{GroupKey} Quarter={Quarter} henüz hazır değil",
                                 group.GroupKey, item.Quarter);
