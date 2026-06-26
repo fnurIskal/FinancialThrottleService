@@ -11,7 +11,7 @@ import {
 import { fetchLogs } from "../api/endpoints";
 import type { LogEntry } from "../types";
 import Header from "../components/layout/Header";
-import Spinner from "../components/ui/Spinner";
+import { LogTableShimmer } from "../components/ui/TableShimmer";
 import toast from "react-hot-toast";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -527,9 +527,28 @@ export default function LogsPage() {
           {/* Scrollable table */}
           <div className="flex-1 overflow-auto min-h-0">
             {loading ? (
-              <div className="flex justify-center py-16">
-                <Spinner />
-              </div>
+              <table
+                className="w-full"
+                style={{ tableLayout: "fixed", borderCollapse: "collapse", minWidth: 900 }}
+              >
+                <colgroup>
+                  {COLS.map((c, i) => (
+                    <col key={i} style={c.width ? { width: c.width } : undefined} />
+                  ))}
+                </colgroup>
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-gray-800 border-b border-gray-700">
+                    {COLS.map((c) => (
+                      <th key={c.label} className="text-left text-gray-400 font-semibold px-3 py-2.5 tracking-widest uppercase text-[10px]">
+                        {c.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <LogTableShimmer rows={18} />
+                </tbody>
+              </table>
             ) : filtered.length === 0 ? (
               <p className="text-gray-500 text-center py-16 text-sm">
                 No logs found for the selected filters.

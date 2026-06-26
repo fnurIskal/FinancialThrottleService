@@ -9,6 +9,7 @@ namespace FinancialThrottleService.Application.Logic
     public class GroupRetryTracker
     {
         private readonly ConcurrentDictionary<string, GroupRetryState> _states = new();
+        private readonly ConcurrentDictionary<string, bool> _forceSendKeys = new();
 
         private const int MaxAttempts = 10;
 
@@ -34,7 +35,7 @@ namespace FinancialThrottleService.Application.Logic
                     DatabaseName = parts.Length > 0 ? parts[0] : string.Empty,
                     SecurityId = parts.Length > 1 && int.TryParse(parts[1], out var sid) ? sid : 0,
                     TemplateId = parts.Length > 2 && int.TryParse(parts[2], out var tid) ? tid : 0,
-                    SecurityCode = string.Empty // security_code gRPC servis katmanında repository'den çözümlenecek
+                    SecurityCode = string.Empty
                 };
             });
 
@@ -52,6 +53,29 @@ namespace FinancialThrottleService.Application.Logic
             }
 
             return false;
+        }
+
+        public void MarkForceSend(string groupKey)
+        {
+            _forceSendKeys[groupKey] = true;
+            if (_states.TryGetValue(groupKey, out var state))
+                lock (state) { state.IsSuspended = false; state.FailureCount = 0; state.RetryInProgress = false; }
+        }
+
+        public bool IsForceSend(string groupKey) => _forceSendKeys.ContainsKey(groupKey);
+
+        public void ClearForceSend(string groupKey) => _forceSendKeys.TryRemove(groupKey, out _);
+
+        public void ForceRetry(string groupKey)
+        {
+            if (_states.TryGetValue(groupKey, out var state))
+            {
+                lock (state)
+                {
+                    state.NextRetryAt = DateTime.UtcNow;
+                    state.RetryInProgress = false;
+                }
+            }
         }
 
         public void RecordSuccess(string groupKey)

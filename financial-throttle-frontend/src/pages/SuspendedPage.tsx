@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { AlertTriangle } from "lucide-react";
-import { fetchSuspended, retrySuspended } from "../api/endpoints";
+import { fetchSuspended, retrySuspended, forceSendSuspended } from "../api/endpoints";
 import type { SuspendedGroup } from "../types";
 import Header from "../components/layout/Header";
 import Badge from "../components/ui/Badge";
-import Spinner from "../components/ui/Spinner";
+import { TableShimmer } from "../components/ui/TableShimmer";
+import ForceSendConfirmModal from "../components/modals/ForceSendConfirmModal";
 import toast from "react-hot-toast";
 
 function formatDate(iso: string) {
@@ -20,6 +21,8 @@ export default function SuspendedPage() {
   const [revision, setRevision] = useState(0);
   const [loadedRevision, setLoadedRevision] = useState<number | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
+  const [forceSending, setForceSending] = useState<string | null>(null);
+  const [confirmGroup, setConfirmGroup] = useState<SuspendedGroup | null>(null);
 
   const loading = loadedRevision !== revision;
   const refresh = useCallback(() => setRevision((r) => r + 1), []);
@@ -57,6 +60,24 @@ export default function SuspendedPage() {
     }
   };
 
+  const handleForceSendConfirm = async () => {
+    if (!confirmGroup) return;
+    const g = confirmGroup;
+    const key = `${g.databaseName}-${g.securityId}-${g.templateId}`;
+    setForceSending(key);
+    const toastId = toast.loading(`Scheduling force send for ${g.securityCode}...`);
+    try {
+      await forceSendSuspended(g.databaseName, g.securityId, g.templateId);
+      toast.success("Force send scheduled", { id: toastId });
+      setConfirmGroup(null);
+      refresh();
+    } catch {
+      toast.error("Force send failed", { id: toastId });
+    } finally {
+      setForceSending(null);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header
@@ -82,9 +103,26 @@ export default function SuspendedPage() {
 
         <div className="card overflow-x-auto">
           {loading ? (
-            <div className="flex justify-center py-16">
-              <Spinner />
-            </div>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {["Database", "Security", "Template", "First Error", "Attempts", "Next Retry", "Actions"].map((h) => (
+                    <th key={h} className="text-left text-gray-400 font-medium py-2 pr-4">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <TableShimmer rows={6} cols={[
+                  { widthClass: "w-2/3" },
+                  { widthClass: "w-1/2" },
+                  { widthClass: "w-1/4" },
+                  { widthClass: "w-3/4" },
+                  { widthClass: "w-8" },
+                  { widthClass: "w-3/4" },
+                  { widthClass: "w-20" },
+                ]} />
+              </tbody>
+            </table>
           ) : groups.length === 0 ? (
             <p className="text-center text-gray-400 text-sm py-16">
               No suspended groups. All clear!
@@ -138,13 +176,22 @@ export default function SuspendedPage() {
                         {formatDate(g.nextRetryUtc)}
                       </td>
                       <td className="py-3">
-                        <button
-                          onClick={() => handleRetry(g)}
-                          disabled={retrying === key || g.retryInProgress}
-                          className="btn-primary text-xs px-3 py-1.5"
-                        >
-                          {retrying === key ? "Retrying..." : "Manual Retry"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleRetry(g)}
+                            disabled={retrying === key || forceSending === key || g.retryInProgress}
+                            className="btn-primary text-xs px-3 py-1.5"
+                          >
+                            {retrying === key ? "Retrying..." : "Manual Retry"}
+                          </button>
+                          <button
+                            onClick={() => setConfirmGroup(g)}
+                            disabled={retrying === key || forceSending === key || g.retryInProgress}
+                            className="btn-danger text-xs px-3 py-1.5"
+                          >
+                            Force Send
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -154,6 +201,13 @@ export default function SuspendedPage() {
           )}
         </div>
       </div>
+
+      <ForceSendConfirmModal
+        group={confirmGroup}
+        onClose={() => setConfirmGroup(null)}
+        onConfirm={handleForceSendConfirm}
+        loading={forceSending !== null}
+      />
     </div>
   );
 }

@@ -50,12 +50,28 @@ namespace FinancialThrottle.Worker
                 Message = $"FinancialThrottleWorker started. Interval={_options.WorkerIntervalSeconds}s MaxParallel={_options.MaxParallelGroups}"
             });
 
+            try
+            {
+                await RunCycleAsync(stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Cycle crashed — devam ediliyor");
+            }
+
             using var timer = new PeriodicTimer(
                 TimeSpan.FromSeconds(_options.WorkerIntervalSeconds));
 
             while (await timer.WaitForNextTickAsync(stoppingToken))
             {
-                await RunCycleAsync(stoppingToken);
+                try
+                {
+                    await RunCycleAsync(stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Cycle crashed — devam ediliyor");
+                }
             }
 
             _logger.LogInformation("FinancialThrottleWorker durdu → {Time}", DateTime.UtcNow);
@@ -87,7 +103,6 @@ namespace FinancialThrottle.Worker
 
                 await using var scope = _scopeFactory.CreateAsyncScope();
                 var repository = scope.ServiceProvider.GetRequiredService<IFinancialRepository>();
-                var evaluator = scope.ServiceProvider.GetRequiredService<SendConditionEvaluator>();
                 var msSourceIds = await repository.GetMsSourceIdsAsync();
 
                 await repository.WriteAliveSqlAsync();
@@ -141,33 +156,46 @@ namespace FinancialThrottle.Worker
                 {
                     bool isOriginal = i == 1;
 
-                    var groups = allGroups
+                    var eligibleGroups = allGroups
                         .Where(g => g.Items.Any(item => item.IsOriginal == isOriginal))
                         .Where(g => !_retryTracker.IsSuspended(g.GroupKey))
-                        .OrderByDescending(g => priorityScores.GetValueOrDefault(g.SecurityCode, 0.0))
-                        .Take(_options.MaxParallelGroups)
+                        .OrderByDescending(g => g.OrderType)
                         .ToList();
 
-                    if (groups.Count > 0)
+                    if (eligibleGroups.Count > 0)
                     {
                         _logger.LogDebug(
                             "IsOriginal={IsOriginal}: {Count} grup işlenecek",
-                            isOriginal, groups.Count);
+                            isOriginal, eligibleGroups.Count);
 
                         await _logRepository.WriteAsync(new LogEntry
                         {
                             Timestamp = DateTime.UtcNow,
                             Level = "Debug",
                             Category = "financial",
-                            Message = $"Processing {groups.Count} group(s) with IsOriginal={isOriginal}"
+                            Message = $"Processing {eligibleGroups.Count} group(s) with IsOriginal={isOriginal}"
                         });
                     }
 
-                    var tasks = groups.Select(group =>
-                        ProcessGroupAsync(group, isOriginal, _scopeFactory, evaluator,
-                            msSourceIds, duplicateMap, ct));
+                    for (int batch = 0; batch < eligibleGroups.Count; batch += _options.MaxParallelGroups)
+                    {
+                        var batchGroups = eligibleGroups
+                            .Skip(batch)
+                            .Take(_options.MaxParallelGroups)
+                            .ToList();
 
-                    await Task.WhenAll(tasks);
+                        _logger.LogDebug(
+                            "Batch {BatchNum}/{TotalBatches}: {Count} grup",
+                            (batch / _options.MaxParallelGroups) + 1,
+                            (int)Math.Ceiling((double)eligibleGroups.Count / _options.MaxParallelGroups),
+                            batchGroups.Count);
+
+                        var tasks = batchGroups.Select(group =>
+                            ProcessGroupAsync(group, isOriginal, _scopeFactory,
+                                msSourceIds, duplicateMap, ct));
+
+                        await Task.WhenAll(tasks);
+                    }
                 }
 
                 await TryProcessSuspendedGroupsAsync(scope, ct);
@@ -196,7 +224,6 @@ namespace FinancialThrottle.Worker
                     Exception = ex.ToString()
                 });
 
-                throw;
             }
         }
 
@@ -204,13 +231,13 @@ namespace FinancialThrottle.Worker
        WaitingGroup group,
        bool isOriginal,
        IServiceScopeFactory scopeFactory,
-       SendConditionEvaluator evaluator,
        int[] msSourceIds,
        Dictionary<(int, int), int> duplicateMap,
        CancellationToken ct)
         {
             await using var scope = scopeFactory.CreateAsyncScope();
             var repository = scope.ServiceProvider.GetRequiredService<IFinancialRepository>();
+            var evaluator = scope.ServiceProvider.GetRequiredService<SendConditionEvaluator>();
 
             var items = group.Items
                 .Where(i => i.IsOriginal == isOriginal)
@@ -265,15 +292,41 @@ namespace FinancialThrottle.Worker
                         Quarter = item.Quarter
                     });
 
-                    var condition = await evaluator.EvaluateAsync(
-                        group, item, tableTypeIds, requiredTypeIds);
+                    bool isForceSend = _retryTracker.IsForceSend(group.GroupKey);
+                    SendCondition condition;
+
+                    if (isForceSend)
+                    {
+                        _logger.LogInformation("ForceSend → evaluate skipped: {GroupKey}", group.GroupKey);
+                        await _logRepository.WriteAsync(new LogEntry
+                        {
+                            Timestamp = DateTime.UtcNow,
+                            Level = "Information",
+                            Category = "financial",
+                            Message = $"ForceSend: evaluate skipped for {group.GroupKey} Quarter={item.Quarter}",
+                            GroupKey = group.GroupKey,
+                            SecurityCode = group.SecurityCode,
+                            DatabaseName = group.DatabaseName,
+                            SecurityId = group.SecurityId,
+                            TemplateId = group.TemplateId,
+                            Quarter = item.Quarter
+                        });
+                        condition = SendCondition.Send;
+                        _retryTracker.ClearForceSend(group.GroupKey);
+                        _retryTracker.RecordSuccess(group.GroupKey);
+                    }
+                    else
+                    {
+                        condition = await evaluator.EvaluateAsync(
+                            group, item, tableTypeIds, requiredTypeIds);
+                    }
 
                     switch (condition)
                     {
                         case SendCondition.Send:
                             await SendGroupAsync(group, item, tableTypeIds,
-                                repository, duplicateMap);
-                            _retryTracker.RecordSuccess(group.GroupKey);
+                                repository, duplicateMap, isForceSend);
+                            if (!isForceSend) _retryTracker.RecordSuccess(group.GroupKey);
                             Interlocked.Increment(ref _processedThisCycle);
 
                             await _logRepository.WriteAsync(new LogEntry
@@ -378,18 +431,58 @@ namespace FinancialThrottle.Worker
         }
 
         private async Task SendGroupAsync(
-       WaitingGroup group,
-       WaitingItem item,
-       List<int> tableTypeIds,
-       IFinancialRepository repository,
-       Dictionary<(int, int), int> duplicateMap)
+           WaitingGroup group,
+           WaitingItem item,
+           List<int> tableTypeIds,
+           IFinancialRepository repository,
+           Dictionary<(int, int), int> duplicateMap,
+           bool isForceSend = false)
         {
             bool isInflation = TemplateTableTypeConfig.IsInflationTemplate(group.TemplateId);
 
             _logger.LogInformation(
-                "GÖNDER → {GroupKey} Quarter={Quarter} IsOriginal={IsOriginal} Inflation={Inflation}",
-                group.GroupKey, item.Quarter, item.IsOriginal, isInflation);
+                "GÖNDER → {GroupKey} Quarter={Quarter} IsOriginal={IsOriginal} Inflation={Inflation} ForceSend={ForceSend}",
+                group.GroupKey, item.Quarter, item.IsOriginal, isInflation, isForceSend);
 
+            if (isForceSend)
+            {
+                try
+                {
+                    await repository.ExecuteSendAsync(
+                        group.DatabaseName, group.SecurityId, item.Quarter,
+                        group.TemplateId, item.DisclosureId, item.IsOriginal,
+                        tableTypeIds, isInflation, item.SendEmail);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        "ForceSend failed for {GroupKey} but removing from queue anyway: {Error}",
+                        group.GroupKey, ex.Message);
+
+                    await repository.DeleteFromQueueAsync(
+                        group.DatabaseName, group.SecurityId, item.Quarter,
+                        group.TemplateId, item.DisclosureId, item.IsOriginal,
+                        tableTypeIds);
+
+                    await _logRepository.WriteAsync(new LogEntry
+                    {
+                        Timestamp = DateTime.UtcNow,
+                        Level = "Warning",
+                        Category = "financial",
+                        Message = $"ForceSend failed but queue cleared: {group.GroupKey} Quarter={item.Quarter} — {ex.Message}",
+                        GroupKey = group.GroupKey,
+                        SecurityCode = group.SecurityCode,
+                        DatabaseName = group.DatabaseName,
+                        SecurityId = group.SecurityId,
+                        TemplateId = group.TemplateId,
+                        Quarter = item.Quarter,
+                        Exception = ex.ToString()
+                    });
+                }
+                return;
+            }
+
+            // Normal send flow
             await repository.ExecuteSendAsync(
                 group.DatabaseName, group.SecurityId, item.Quarter,
                 group.TemplateId, item.DisclosureId, item.IsOriginal,
@@ -445,7 +538,6 @@ namespace FinancialThrottle.Worker
             });
 
             var repository = scope.ServiceProvider.GetRequiredService<IFinancialRepository>();
-            var evaluator = scope.ServiceProvider.GetRequiredService<SendConditionEvaluator>();
             var msSourceIds = await repository.GetMsSourceIdsAsync();
             var duplicateMap = await repository.GetDuplicateItemCodeMapAsync();
             var allGroups = await repository.GetAllWaitingGroupsAsync();
@@ -474,7 +566,7 @@ namespace FinancialThrottle.Worker
 
                 try
                 {
-                    await ProcessGroupAsync(group, false, _scopeFactory, evaluator,
+                    await ProcessGroupAsync(group, false, _scopeFactory,
                         msSourceIds, duplicateMap, ct);
 
                     _retryTracker.RecordSuspendRetrySuccess(key);

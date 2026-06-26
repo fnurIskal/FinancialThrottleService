@@ -11,6 +11,7 @@ namespace FinancialThrottleService.Domain.Models
         public int TemplateId { get; set; }
         public string SecurityCode { get; set; } = string.Empty;
         public List<WaitingItem> Items { get; set; } = new();
+        public int OrderType { get; set; }
         public string GroupKey => $"{DatabaseName}|{SecurityId}|{TemplateId}";
     }
 }

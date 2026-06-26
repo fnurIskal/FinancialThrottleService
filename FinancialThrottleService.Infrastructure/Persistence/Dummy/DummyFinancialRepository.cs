@@ -16,6 +16,7 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Dummy
             SecurityId   = 282,
             TemplateId   = 21,
             SecurityCode = "THYAO",
+            OrderType    = 30,
             Items = new List<WaitingItem>
             {
                 new() { Quarter = 202409, IsOriginal = false, Username = "boss", DisclosureId = 1001 }
@@ -28,6 +29,7 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Dummy
             SecurityId   = 292,
             TemplateId   = 21,
             SecurityCode = "SASA",
+            OrderType    = 30,
             Items = new List<WaitingItem>
             {
                 new() { Quarter = 202409, IsOriginal = false, Username = "analyst1", DisclosureId = 1002 }
@@ -41,6 +43,7 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Dummy
             SecurityId   = 50,
             TemplateId   = 241,
             SecurityCode = "MSSTOCK",
+            OrderType    = 10,
             Items = new List<WaitingItem>
             {
                 new() { Quarter = 202412, IsOriginal = false, Username = "analyst2", DisclosureId = 2001 }
@@ -54,6 +57,7 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Dummy
             SecurityId   = 346,
             TemplateId   = 21,
             SecurityCode = "AKBNK",
+            OrderType    = 30,
             Items = new List<WaitingItem>
             {
                 new() { Quarter = 202409, IsOriginal = false, Username = "boss", DisclosureId = 1003 },
@@ -176,6 +180,14 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Dummy
         {
             var key = $"{databaseName}|{securityId}|{templateId}|{quarter}";
             return Task.FromResult(_quarterlyData.Contains(key));
+        }
+
+        public Task DeleteFromQueueAsync(
+            string databaseName, int securityId, int quarter, int templateId,
+            int disclosureId, bool isOriginal, List<int> tableTypeIds)
+        {
+            Console.WriteLine($"[DUMMY] DeleteFromQueueAsync: {databaseName}/{securityId}/Q{quarter}/T{templateId}");
+            return Task.CompletedTask;
         }
     }
 }

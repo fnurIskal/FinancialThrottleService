@@ -4,8 +4,8 @@ import { fetchStatus, fetchQueue } from "../api/endpoints";
 import type { StatusResponse, WaitingGroup } from "../types";
 import Header from "../components/layout/Header";
 import Badge from "../components/ui/Badge";
-import Spinner from "../components/ui/Spinner";
 import DashboardStats from "../components/ui/DashboardStats";
+import { TableShimmer } from "../components/ui/TableShimmer";
 import GroupDetailModal from "../components/modals/GroupDetailModal";
 import toast from "react-hot-toast";
 
@@ -40,7 +40,11 @@ export default function DashboardPage() {
     const loadQueue = fetchQueue()
       .then((q) => {
         if (!cancelled) {
-          setGroups(q.groups.slice(0, 5));
+          setGroups(
+            [...q.groups]
+              .sort((a, b) => (b.orderType ?? 0) - (a.orderType ?? 0))
+              .slice(0, 5)
+          );
           setQueueError(null);
         }
       })
@@ -65,7 +69,7 @@ export default function DashboardPage() {
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header
         title="Dashboard"
-        subtitle={`Last updated: ${status ? formatTime(status.lastHeartbeatUtc) : "—"}`}
+        subtitle={`Worker started: ${status ? formatTime(status.workerStartedUtc) : "—"}`}
       />
 
       <div className="flex-1 p-6 space-y-6 overflow-y-auto">
@@ -88,8 +92,25 @@ export default function DashboardPage() {
           </div>
 
           {isInitialLoad ? (
-            <div className="flex justify-center py-10">
-              <Spinner />
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    {["Database", "Security", "Template", "Items", "Status"].map((h) => (
+                      <th key={h} className="text-left text-gray-400 font-medium py-2 pr-4">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <TableShimmer rows={5} cols={[
+                    { widthClass: "w-2/3" },
+                    { widthClass: "w-1/2" },
+                    { widthClass: "w-1/3" },
+                    { widthClass: "w-8" },
+                    { widthClass: "w-14" },
+                  ]} />
+                </tbody>
+              </table>
             </div>
           ) : queueError ? (
             <div className="flex flex-col items-center py-10 gap-2">

@@ -13,17 +13,23 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
         private readonly RasStaj107Context _context107;
         private readonly RasStaj32501Context _context32501;
         private readonly IEmailQueueRepository _emailQueueRepository;
+        private readonly IFinancialTransactionApi _financialTransactionApi;
+        private readonly ILogRepository _logRepository;
 
         public SqlFinancialRepository(
             RasStajContext context,
             RasStaj107Context context107,
             RasStaj32501Context context32501,
-            IEmailQueueRepository emailQueueRepository)
+            IEmailQueueRepository emailQueueRepository,
+            IFinancialTransactionApi financialTransactionApi,
+            ILogRepository logRepository)
         {
             _context = context;
             _context107 = context107;
             _context32501 = context32501;
             _emailQueueRepository = emailQueueRepository;
+            _financialTransactionApi = financialTransactionApi;
+            _logRepository = logRepository;
         }
 
         private static bool IsTurkeyDb(string dbName) =>
@@ -58,6 +64,12 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                 .ToList();
 
             Console.WriteLine($"[DEBUG] WaitingFinancialTables: {allRows.Count} rows → {rawGroups.Count} groups");
+
+            // Step 2a: Resolve OrderType from TableType table
+            var templateIds = rawGroups.Select(r => r.TemplateId).Distinct().ToArray();
+            var orderTypeMap = await _context.TableTypes
+                .Where(t => templateIds.Contains(t.Id))
+                .ToDictionaryAsync(t => t.Id, t => t.Order ?? 0);
 
             // Step 2: Resolve SecurityCode from the correct Security table
             var turkey107Ids = rawGroups
@@ -94,7 +106,8 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                     SecurityId = r.SecurityId,
                     TemplateId = r.TemplateId,
                     SecurityCode = codeLookup.GetValueOrDefault(r.SecurityId, $"SEC_{r.SecurityId}"),
-                    Items = r.Items
+                    Items = r.Items,
+                    OrderType = orderTypeMap.GetValueOrDefault(r.TemplateId, 0)
                 };
             }).ToList();
         }
@@ -145,28 +158,93 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
             int disclosureId, bool isOriginal, List<int> tableTypeIds, bool isInflation,
             bool sendEmail)
         {
+            Console.WriteLine($"[INFO] ExecuteSendAsync: {databaseName}/{securityId}/Q{quarter}/T{templateId} " +
+                              $"TypeIds=[{string.Join(",", tableTypeIds)}] Inflation={isInflation} SendEmail={sendEmail}");
             try
             {
-                Console.WriteLine($"[INFO] ExecuteSendAsync: {databaseName}/{securityId}/Q{quarter}/T{templateId} " +
-                                  $"TypeIds=[{string.Join(",", tableTypeIds)}] Inflation={isInflation} SendEmail={sendEmail}");
+                // Step 1: Fetch rows (and their SQL commands) from the queue
+                var rows = await _context.WaitingFinancialTables
+                    .Where(w => w.DatabaseName == databaseName &&
+                                w.SecurityId == securityId &&
+                                w.Quarter == quarter &&
+                                w.TemplateId == templateId &&
+                                w.IsOriginal == isOriginal &&
+                                w.DisclosureId == disclosureId &&
+                                tableTypeIds.Contains(w.TableTypeId))
+                    .ToListAsync();
 
-                // TODO: Step 1: Call IFinancialTransactionApi (GenerateInflationAsync / GenerateRestatedAsync)
+                var commands = string.Join("\n", rows
+                    .Where(r => !string.IsNullOrWhiteSpace(r.Sql))
+                    .Select(r => r.Sql!));
 
+                Console.WriteLine($"[INFO] ExecuteSendAsync: {rows.Count} row(s) found, SQL length={commands.Length}");
+
+                // Step 2: Call FinancialTransactionApi (Inflation or Restated)
+                string apiResult = isInflation
+                    ? await _financialTransactionApi.GenerateInflationAsync(
+                        databaseName, quarter, securityId, templateId, commands)
+                    : await _financialTransactionApi.GenerateRestatedAsync(
+                        databaseName, quarter, securityId, templateId, commands);
+
+                Console.WriteLine($"[INFO] ExecuteSendAsync: API result → {apiResult}");
+
+                // Step 3: Notify via email
                 if (sendEmail)
                 {
                     var subject = $"Financial Data Sent: {databaseName} / SecurityId={securityId} / Q{quarter}";
                     var body = $"DatabaseName: {databaseName}\nSecurityId: {securityId}\nQuarter: {quarter}\n" +
-                               $"TemplateId: {templateId}\nDisclosureId: {disclosureId}\nIsOriginal: {isOriginal}";
+                               $"TemplateId: {templateId}\nDisclosureId: {disclosureId}\nIsOriginal: {isOriginal}\n" +
+                               $"TableTypeIds: [{string.Join(",", tableTypeIds)}]\nAPI Result: {apiResult}";
 
                     await _emailQueueRepository.EnqueueAsync(subject, body, new[] { "admin@example.com" });
                     Console.WriteLine($"[INFO] EmailQueue: enqueued for {databaseName}/{securityId}/Q{quarter}");
                 }
 
-                // TODO: Step 3: Delete from WaitingFinancialTables after successful send
+                // Step 4: Remove processed rows from queue
+                _context.WaitingFinancialTables.RemoveRange(rows);
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"[INFO] ExecuteSendAsync: removed {rows.Count} row(s) from WaitingFinancialTables");
+
+                // Step 5: Write audit log to MongoDB
+                await _logRepository.WriteAsync(new LogEntry
+                {
+                    Timestamp = DateTime.UtcNow,
+                    Level = "Information",
+                    Category = "financial",
+                    Message = $"Send completed: {databaseName}/{securityId}/Q{quarter}/T{templateId} " +
+                              $"IsOriginal={isOriginal} Inflation={isInflation} Rows={rows.Count}",
+                    DatabaseName = databaseName,
+                    SecurityId = securityId,
+                    TemplateId = templateId,
+                    Quarter = quarter,
+                    Metadata = new
+                    {
+                        DisclosureId = disclosureId,
+                        IsOriginal = isOriginal,
+                        IsInflation = isInflation,
+                        TableTypeIds = tableTypeIds,
+                        RowsRemoved = rows.Count,
+                        ApiResult = apiResult
+                    }
+                });
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERROR] ExecuteSendAsync failed: {ex.Message}");
+
+                await _logRepository.WriteAsync(new LogEntry
+                {
+                    Timestamp = DateTime.UtcNow,
+                    Level = "Error",
+                    Category = "financial",
+                    Message = $"Send failed: {databaseName}/{securityId}/Q{quarter}/T{templateId} — {ex.Message}",
+                    DatabaseName = databaseName,
+                    SecurityId = securityId,
+                    TemplateId = templateId,
+                    Quarter = quarter,
+                    Exception = ex.ToString()
+                });
+
                 throw;
             }
         }
@@ -319,6 +397,25 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                 Console.WriteLine($"[ERROR] HasQuarterlyDataAsync failed: {ex.Message}");
                 return false;
             }
+        }
+
+        public async Task DeleteFromQueueAsync(
+            string databaseName, int securityId, int quarter, int templateId,
+            int disclosureId, bool isOriginal, List<int> tableTypeIds)
+        {
+            var rows = await _context.WaitingFinancialTables
+                .Where(w => w.DatabaseName == databaseName &&
+                            w.SecurityId == securityId &&
+                            w.Quarter == quarter &&
+                            w.TemplateId == templateId &&
+                            w.IsOriginal == isOriginal &&
+                            w.DisclosureId == disclosureId &&
+                            tableTypeIds.Contains(w.TableTypeId))
+                .ToListAsync();
+
+            _context.WaitingFinancialTables.RemoveRange(rows);
+            await _context.SaveChangesAsync();
+            Console.WriteLine($"[INFO] DeleteFromQueueAsync: removed {rows.Count} row(s) for {databaseName}/{securityId}/Q{quarter}/T{templateId}");
         }
 
         public async Task WriteAliveSqlAsync()

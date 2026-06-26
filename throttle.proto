@@ -9,6 +9,7 @@ service ThrottleService {
     rpc GetQueue (QueueRequest) returns (QueueResponse);
     rpc GetSuspended (SuspendedRequest) returns (SuspendedResponse);
     rpc RetryGroup (RetryGroupRequest) returns (RetryGroupResponse);
+    rpc ForceSendGroup (ForceSendRequest) returns (ForceSendResponse);
     rpc StreamLogs (LogStreamRequest) returns (stream LogEntry);
 }
 
@@ -39,6 +40,7 @@ message WaitingGroupMessage {
     double priority_score = 5;
     int32  item_count     = 6;
     repeated WaitingItemMessage items = 7;
+    int32  order_type     = 8;
 }
 
 message WaitingItemMessage {
@@ -74,6 +76,18 @@ message RetryGroupRequest {
 }
 
 message RetryGroupResponse {
+    bool   success = 1;
+    string message = 2;
+}
+
+// FORCE SEND
+message ForceSendRequest {
+    string database_name = 1;
+    int32  security_id   = 2;
+    int32  template_id   = 3;
+}
+
+message ForceSendResponse {
     bool   success = 1;
     string message = 2;
 }

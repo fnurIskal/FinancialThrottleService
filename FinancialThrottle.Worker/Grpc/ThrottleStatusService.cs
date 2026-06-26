@@ -32,9 +32,10 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
         StatusRequest request,
         ServerCallContext context)
     {
+        var heartbeatAge = (DateTime.UtcNow - Worker.LastHeartbeat).TotalSeconds;
         return Task.FromResult(new StatusResponse
         {
-            IsRunning = true,
+            IsRunning = heartbeatAge < 90,
             LastHeartbeatUtc = Worker.LastHeartbeat.ToString("O"),
             QueuedCount = Worker.LastQueuedCount,
             SuspendedCount = _retryTracker.GetSuspendedKeys().Count,
@@ -73,7 +74,7 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
 
         var response = new QueueResponse();
 
-        foreach (var group in groups)
+        foreach (var group in groups.OrderByDescending(g => g.OrderType))
         {
             var groupMsg = new WaitingGroupMessage
             {
@@ -82,7 +83,8 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
                 TemplateId = group.TemplateId,
                 SecurityCode = group.SecurityCode,
                 ItemCount = group.Items.Count,
-                PriorityScore = priorityScores.GetValueOrDefault(group.SecurityCode, 0.0)
+                PriorityScore = priorityScores.GetValueOrDefault(group.SecurityCode, 0.0),
+                OrderType = group.OrderType
             };
 
             foreach (var item in group.Items)
@@ -145,14 +147,41 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
         return response;
     }
 
+    public override Task<ForceSendResponse> ForceSendGroup(
+        ForceSendRequest request,
+        ServerCallContext context)
+    {
+        var groupKey = $"{request.DatabaseName}|{request.SecurityId}|{request.TemplateId}";
+        _retryTracker.MarkForceSend(groupKey);
+        _logger.LogInformation("ForceSend marked for {GroupKey}", groupKey);
+        return Task.FromResult(new ForceSendResponse
+        {
+            Success = true,
+            Message = $"{groupKey} will be force-sent on next cycle"
+        });
+    }
+
     public override Task<RetryGroupResponse> RetryGroup(
         RetryGroupRequest request,
         ServerCallContext context)
     {
+        var groupKey = $"{request.DatabaseName}|{request.SecurityId}|{request.TemplateId}";
+
+        if (!_retryTracker.IsSuspended(groupKey))
+        {
+            return Task.FromResult(new RetryGroupResponse
+            {
+                Success = false,
+                Message = $"{groupKey} not in the suspended list"
+            });
+        }
+
+        _retryTracker.ForceRetry(groupKey);
+
         return Task.FromResult(new RetryGroupResponse
         {
-            Success = false,
-            Message = "Retry henüz implement edilmedi"
+            Success = true,
+            Message = $"{groupKey} it will be retried in the next cycle."
         });
     }
 }

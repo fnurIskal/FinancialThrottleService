@@ -40,5 +40,13 @@ namespace FinancialThrottleService.Application.Interfaces
         int quarter,
         int templateId,
         bool isOriginal);
+        Task DeleteFromQueueAsync(
+        string databaseName,
+        int securityId,
+        int quarter,
+        int templateId,
+        int disclosureId,
+        bool isOriginal,
+        List<int> tableTypeIds);
     }
 }

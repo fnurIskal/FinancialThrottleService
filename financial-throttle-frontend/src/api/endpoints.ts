@@ -5,6 +5,7 @@ import type {
   LogsResponse,
   SuspendedResponse,
   RetryResponse,
+  ForceSendResponse,
 } from '../types';
 
 export const fetchQueue = (): Promise<QueueResponse> =>
@@ -40,4 +41,13 @@ export const retrySuspended = (
 ): Promise<RetryResponse> =>
   api
     .post<RetryResponse>(`/suspended/${databaseName}/${securityId}/${templateId}/retry`)
+    .then(r => r.data);
+
+export const forceSendSuspended = (
+  databaseName: string,
+  securityId: number,
+  templateId: number
+): Promise<ForceSendResponse> =>
+  api
+    .post<ForceSendResponse>(`/suspended/${databaseName}/${securityId}/${templateId}/force-send`)
     .then(r => r.data);

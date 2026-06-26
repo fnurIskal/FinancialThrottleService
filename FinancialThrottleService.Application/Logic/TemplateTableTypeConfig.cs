@@ -22,7 +22,7 @@ namespace FinancialThrottleService.Application.Logic
                 return Array.Empty<int>();
             }
 
-                if (databaseName is "RAS_STAJ107" or "RAS_101")
+                if (databaseName is "RAS_STAJ107")
             {
                 if (new[] { 2, 5, 8, 11, 14, 31, 36 }.Contains(templateId))
                     return new[] { 1, 2 };

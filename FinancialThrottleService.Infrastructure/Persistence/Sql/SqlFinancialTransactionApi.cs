@@ -7,9 +7,11 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
     public class SqlFinancialTransactionApi : IFinancialTransactionApi
     {
         private readonly string _baseConnectionString;
+        private readonly IConfiguration _configuration;
 
         public SqlFinancialTransactionApi(IConfiguration configuration)
         {
+            _configuration = configuration;
             _baseConnectionString = configuration.GetConnectionString("DefaultConnection")
                 ?? throw new InvalidOperationException("DefaultConnection string is missing.");
         }
@@ -61,9 +63,10 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
 
         private string BuildConnectionString(string database)
         {
+            var resolved = _configuration[$"DatabaseNames:{database}"] ?? database;
             var builder = new SqlConnectionStringBuilder(_baseConnectionString)
             {
-                InitialCatalog = database
+                InitialCatalog = resolved
             };
             return builder.ConnectionString;
         }

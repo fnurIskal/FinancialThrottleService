@@ -4,7 +4,7 @@ import { fetchQueue } from "../api/endpoints";
 import type { WaitingGroup } from "../types";
 import Header from "../components/layout/Header";
 import Badge from "../components/ui/Badge";
-import Spinner from "../components/ui/Spinner";
+import { TableShimmer } from "../components/ui/TableShimmer";
 import GroupDetailModal from "../components/modals/GroupDetailModal";
 
 const PAGE_SIZE = 15;
@@ -117,10 +117,25 @@ export default function QueuePage() {
 
         {/* Table */}
         <div className="card flex-1 overflow-x-auto">
-          {isInitialLoad ? (
-            <div className="flex justify-center py-16">
-              <Spinner />
-            </div>
+          {isInitialLoad || loading ? (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {["Database", "Security Code", "Template", "Items", "Actions"].map((h) => (
+                    <th key={h} className="text-left text-gray-400 font-medium py-2 pr-4">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <TableShimmer rows={PAGE_SIZE} cols={[
+                  { widthClass: "w-2/3" },
+                  { widthClass: "w-1/2" },
+                  { widthClass: "w-1/4" },
+                  { widthClass: "w-8" },
+                  { widthClass: "w-14" },
+                ]} />
+              </tbody>
+            </table>
           ) : fetchError ? (
             <div className="flex flex-col items-center py-16 gap-2">
               <p className="text-sm text-red-500 font-medium">{fetchError}</p>
@@ -128,10 +143,6 @@ export default function QueuePage() {
                 Check that the Worker container is running and the database is
                 reachable.
               </p>
-            </div>
-          ) : loading ? (
-            <div className="flex justify-center py-16">
-              <Spinner />
             </div>
           ) : paged.length === 0 ? (
             <p className="text-center text-gray-400 text-sm py-16">

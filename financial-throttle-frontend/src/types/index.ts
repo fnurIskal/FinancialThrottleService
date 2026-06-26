@@ -12,6 +12,7 @@ export interface WaitingGroup {
   securityCode: string;
   itemCount: number;
   items: WaitingItem[];
+  orderType?: number;
 }
 
 export interface QueueResponse {
@@ -80,6 +81,10 @@ export interface ProcessResponse {
   message: string;
   groupKey: string;
   timestamp: string;
+}
+
+export interface ForceSendResponse {
+  message: string;
 }
 
 export type Page = 'dashboard' | 'queue' | 'suspended' | 'logs' | 'settings';

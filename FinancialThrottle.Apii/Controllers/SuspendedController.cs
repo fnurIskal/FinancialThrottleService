@@ -49,6 +49,32 @@ namespace FinancialThrottle.Apii.Controllers
             }
         }
 
+        [HttpPost("{db}/{securityId}/{templateId}/force-send")]
+        public async Task<IActionResult> ForceSend(string db, int securityId, int templateId)
+        {
+            try
+            {
+                var request = new ForceSendRequest
+                {
+                    DatabaseName = db,
+                    SecurityId = securityId,
+                    TemplateId = templateId
+                };
+
+                var response = await _grpcClient.ForceSendGroupAsync(request);
+
+                if (response.Success)
+                    return Ok(new { message = response.Message });
+                else
+                    return BadRequest(new { error = response.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to force send group");
+                return StatusCode(500, new { error = "Failed to force send group" });
+            }
+        }
+
         [HttpPost("{db}/{securityId}/{templateId}/retry")]
         public async Task<IActionResult> RetryGroup(
             string db, int securityId, int templateId)

@@ -5,6 +5,7 @@ import type {
   SuspendedResponse,
   RetryResponse,
   ProcessResponse,
+  ForceSendResponse,
 } from "../types";
 
 const delay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
@@ -16,6 +17,7 @@ export const mockQueue: QueueResponse = {
       securityId: 282,
       templateId: 21,
       securityCode: "THYAO",
+      orderType: 30,
       itemCount: 2,
       items: [
         {
@@ -37,6 +39,7 @@ export const mockQueue: QueueResponse = {
       securityId: 292,
       templateId: 21,
       securityCode: "SASA",
+      orderType: 30,
       itemCount: 1,
       items: [
         {
@@ -52,6 +55,7 @@ export const mockQueue: QueueResponse = {
       securityId: 50,
       templateId: 241,
       securityCode: "MSSTOCK",
+      orderType: 10,
       itemCount: 1,
       items: [
         {
@@ -67,6 +71,7 @@ export const mockQueue: QueueResponse = {
       securityId: 346,
       templateId: 21,
       securityCode: "AKBNK",
+      orderType: 30,
       itemCount: 2,
       items: [
         {
@@ -88,6 +93,7 @@ export const mockQueue: QueueResponse = {
       securityId: 101,
       templateId: 31,
       securityCode: "EREGL",
+      orderType: 20,
       itemCount: 3,
       items: [
         {
@@ -279,5 +285,16 @@ export const mockRetrySuspended = async (
     message: `Retry scheduled for ${databaseName}|${securityId}|${templateId}`,
     retryScheduled: true,
     nextRetryTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+  };
+};
+
+export const mockForceSendSuspended = async (
+  databaseName: string,
+  securityId: number,
+  templateId: number,
+): Promise<ForceSendResponse> => {
+  await delay(600);
+  return {
+    message: `${databaseName}|${securityId}|${templateId} will be force-sent on next cycle`,
   };
 };
