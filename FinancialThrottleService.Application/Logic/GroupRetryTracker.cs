@@ -11,6 +11,16 @@ namespace FinancialThrottleService.Application.Logic
         private readonly ConcurrentDictionary<string, GroupRetryState> _states = new();
         private readonly ConcurrentDictionary<string, bool> _forceSendKeys = new();
         private readonly ConcurrentDictionary<string, bool> _waitingKeys = new();
+        private readonly ConcurrentDictionary<string, DateTime> _processedInCycle = new();
+
+        public void MarkProcessedInCycle(string groupKey) =>
+            _processedInCycle[groupKey] = DateTime.UtcNow;
+
+        public bool WasProcessedInLastCycle(string groupKey) =>
+            _processedInCycle.ContainsKey(groupKey);
+
+        public void ClearCycleTracking() =>
+            _processedInCycle.Clear();
 
         private const int MaxAttempts = 10;
 

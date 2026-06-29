@@ -74,7 +74,9 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
 
         var response = new QueueResponse();
 
-        foreach (var group in groups.OrderByDescending(g => g.OrderType))
+        foreach (var group in groups
+            .Where(g => !_retryTracker.IsSuspended(g.GroupKey))
+            .OrderByDescending(g => g.OrderType))
         {
             var groupMsg = new WaitingGroupMessage
             {

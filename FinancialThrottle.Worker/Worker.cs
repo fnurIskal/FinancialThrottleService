@@ -92,6 +92,7 @@ namespace FinancialThrottle.Worker
             {
                 _logger.LogDebug("Cycle başladı → {Time}", cycleStart);
                 _processedThisCycle = 0;
+                _retryTracker.ClearCycleTracking();
 
                 await _logRepository.WriteAsync(new LogEntry
                 {
@@ -129,8 +130,9 @@ namespace FinancialThrottle.Worker
                 });
 
                 var allGroups = await repository.GetAllWaitingGroupsAsync();
-                Interlocked.Exchange(ref _lastQueuedCount, allGroups.Count);
-                _logger.LogInformation("Kuyrukta {Count} grup bulundu", allGroups.Count);
+                var nonSuspendedCount = allGroups.Count(g => !_retryTracker.IsSuspended(g.GroupKey));
+                Interlocked.Exchange(ref _lastQueuedCount, nonSuspendedCount);
+                _logger.LogInformation("Kuyrukta {Count} grup bulundu ({NonSuspended} aktif)", allGroups.Count, nonSuspendedCount);
 
                 await _logRepository.WriteAsync(new LogEntry
                 {
@@ -177,25 +179,35 @@ namespace FinancialThrottle.Worker
                         });
                     }
 
-                    for (int batch = 0; batch < eligibleGroups.Count; batch += _options.MaxParallelGroups)
+                    // Prefer groups not processed in previous cycle (round-robin)
+                    var selected = eligibleGroups
+                        .Where(g => !_retryTracker.WasProcessedInLastCycle(g.GroupKey))
+                        .Take(_options.MaxParallelGroups)
+                        .ToList();
+
+                    // If not enough, fill remaining slots from recently processed
+                    if (selected.Count < _options.MaxParallelGroups)
                     {
-                        var batchGroups = eligibleGroups
-                            .Skip(batch)
-                            .Take(_options.MaxParallelGroups)
+                        var remaining = eligibleGroups
+                            .Where(g => _retryTracker.WasProcessedInLastCycle(g.GroupKey))
+                            .Take(_options.MaxParallelGroups - selected.Count)
                             .ToList();
-
-                        _logger.LogDebug(
-                            "Batch {BatchNum}/{TotalBatches}: {Count} grup",
-                            (batch / _options.MaxParallelGroups) + 1,
-                            (int)Math.Ceiling((double)eligibleGroups.Count / _options.MaxParallelGroups),
-                            batchGroups.Count);
-
-                        var tasks = batchGroups.Select(group =>
-                            ProcessGroupAsync(group, isOriginal, _scopeFactory,
-                                msSourceIds, duplicateMap, ct));
-
-                        await Task.WhenAll(tasks);
+                        selected.AddRange(remaining);
                     }
+
+                    // Mark selected as processed this cycle
+                    foreach (var g in selected)
+                        _retryTracker.MarkProcessedInCycle(g.GroupKey);
+
+                    _logger.LogDebug(
+                        "IsOriginal={IsOriginal}: {Selected}/{Total} grup seçildi",
+                        isOriginal, selected.Count, eligibleGroups.Count);
+
+                    var tasks = selected.Select(group =>
+                        ProcessGroupAsync(group, isOriginal, _scopeFactory,
+                            msSourceIds, duplicateMap, ct));
+
+                    await Task.WhenAll(tasks);
                 }
 
                 await TryProcessSuspendedGroupsAsync(scope, ct);
