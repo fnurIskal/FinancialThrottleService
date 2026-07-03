@@ -1,19 +1,19 @@
 ﻿using FinancialThrottleService.Application.Interfaces;
 using FinancialThrottleService.Domain.Models;
-using FinancialThrottleService.Infrastructure.Models.Generated.RAS107;
-using FinancialThrottleService.Infrastructure.Models.Generated.RAS32501;
+using FinancialThrottleService.Infrastructure.Models.Generated.RAS107_PROD;
+using FinancialThrottleService.Infrastructure.Models.Generated.RAS32501_PROD;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinancialThrottleService.Infrastructure.Persistence.Sql
 {
     public class SqlCheckerRepository : ICheckerRepository
     {
-        private readonly RasStaj107Context _context107;
-        private readonly RasStaj32501Context _context32501;
+        private readonly Ras107Context _context107;
+        private readonly Ras32501Context _context32501;
 
         public SqlCheckerRepository(
-            RasStaj107Context context107,
-            RasStaj32501Context context32501)
+            Ras107Context context107,
+            Ras32501Context context32501)
         {
             _context107 = context107;
             _context32501 = context32501;
@@ -31,26 +31,29 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
             string databaseName,
             int securityId,
             int templateId,
-            int quarter)
+            int quarter,
+            int? itemQuarterlyCode = null)
         {
-            List<int?> quarterlyItems = new();
-            List<int?> quarterlyOriginalItems = new();
+            List<(int? Code, string Definition)> quarterlyItems = new();
+            List<(int? Code, string Definition)> quarterlyOriginalItems = new();
 
             if (IsTurkeyDb(databaseName))
             {
                 quarterlyItems = await _context107.Quarterlies
                     .Where(q => q.SecurityId == securityId &&
                                 q.TemplateId == templateId &&
-                                q.Quarter == quarter)
-                    .Select(q => q.ItemQuarterlyCode)
+                                q.Quarter == quarter &&
+                                (itemQuarterlyCode == null || q.ItemQuarterlyCode == itemQuarterlyCode))
+                    .Select(q => ValueTuple.Create(q.ItemQuarterlyCode, q.OriginalDefinition ?? string.Empty))
                     .Distinct()
                     .ToListAsync();
 
                 quarterlyOriginalItems = await _context107.QuarterlyOriginals
                     .Where(q => q.SecurityId == securityId &&
                                 q.TemplateId == templateId &&
-                                q.Quarter == quarter)
-                    .Select(q => q.ItemQuarterlyCode)
+                                q.Quarter == quarter &&
+                                (itemQuarterlyCode == null || q.ItemQuarterlyCode == itemQuarterlyCode))
+                    .Select(q => ValueTuple.Create(q.ItemQuarterlyCode, q.OriginalDefinition ?? string.Empty))
                     .Distinct()
                     .ToListAsync();
             }
@@ -59,27 +62,29 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                 quarterlyItems = await _context32501.Quarterlies
                     .Where(q => q.SecurityId == securityId &&
                                 q.TemplateId == templateId &&
-                                q.Quarter == quarter)
-                    .Select(q => q.ItemQuarterlyCode)
+                                q.Quarter == quarter &&
+                                (itemQuarterlyCode == null || q.ItemQuarterlyCode == itemQuarterlyCode))
+                    .Select(q => ValueTuple.Create(q.ItemQuarterlyCode, q.OriginalDefinition ?? string.Empty))
                     .Distinct()
                     .ToListAsync();
 
                 quarterlyOriginalItems = await _context32501.QuarterlyOriginals
                     .Where(q => q.SecurityId == securityId &&
                                 q.TemplateId == templateId &&
-                                q.Quarter == quarter)
-                    .Select(q => q.ItemQuarterlyCode)
+                                q.Quarter == quarter &&
+                                (itemQuarterlyCode == null || q.ItemQuarterlyCode == itemQuarterlyCode))
+                    .Select(q => ValueTuple.Create(q.ItemQuarterlyCode, q.OriginalDefinition ?? string.Empty))
                     .Distinct()
                     .ToListAsync();
             }
 
             var allCodes = quarterlyItems
-                .Concat(quarterlyOriginalItems)
+                .Select(q => q.Code)
+                .Concat(quarterlyOriginalItems.Select(q => q.Code))
                 .Where(c => c != null)
                 .Distinct()
                 .ToList();
 
-           
             if (allCodes.Count == 0)
             {
                 return new List<CheckerItemResult>
@@ -87,6 +92,7 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                     new CheckerItemResult
                     {
                         ItemQuarterlyCode = null,
+                        OriginalDefinition = string.Empty,
                         InQuarterly = false,
                         InQuarterlyOriginal = false,
                         Status = "not_found"
@@ -94,15 +100,19 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                 };
             }
 
-     
             return allCodes.Select(code =>
             {
-                bool inQ = quarterlyItems.Contains(code);
-                bool inQO = quarterlyOriginalItems.Contains(code);
+                var qItem = quarterlyItems.FirstOrDefault(q => q.Code == code);
+                var qoItem = quarterlyOriginalItems.FirstOrDefault(q => q.Code == code);
+
+                bool inQ = qItem != default;
+                bool inQO = qoItem != default;
+                string definition = !string.IsNullOrEmpty(qItem.Definition) ? qItem.Definition : qoItem.Definition ?? string.Empty;
 
                 return new CheckerItemResult
                 {
                     ItemQuarterlyCode = code,
+                    OriginalDefinition = definition,
                     InQuarterly = inQ,
                     InQuarterlyOriginal = inQO,
                     Status = inQ || inQO ? "processed" : "not_found"

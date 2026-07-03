@@ -24,7 +24,8 @@ namespace FinancialThrottle.Apii.Controllers
             [FromQuery] string databaseName,
             [FromQuery] int securityId,
             [FromQuery] int templateId,
-            [FromQuery] int quarter)
+            [FromQuery] int quarter,
+            [FromQuery] int? itemQuarterlyCode = null)
         {
             if (string.IsNullOrWhiteSpace(databaseName))
                 return BadRequest(new { error = "databaseName is required" });
@@ -32,7 +33,7 @@ namespace FinancialThrottle.Apii.Controllers
             try
             {
                 var results = await _checkerRepository.CheckAsync(
-                    databaseName, securityId, templateId, quarter);
+                    databaseName, securityId, templateId, quarter, itemQuarterlyCode);
 
                 return Ok(new
                 {
@@ -40,12 +41,14 @@ namespace FinancialThrottle.Apii.Controllers
                     securityId,
                     templateId,
                     quarter,
+                    itemQuarterlyCode,
                     totalCount = results.Count,
                     processedCount = results.Count(r => r.Status == "processed"),
                     notFoundCount = results.Count(r => r.Status == "not_found"),
                     items = results.Select(r => new
                     {
                         itemQuarterlyCode = r.ItemQuarterlyCode,
+                        originalDefinition = r.OriginalDefinition,
                         inQuarterly = r.InQuarterly,
                         inQuarterlyOriginal = r.InQuarterlyOriginal,
                         status = r.Status

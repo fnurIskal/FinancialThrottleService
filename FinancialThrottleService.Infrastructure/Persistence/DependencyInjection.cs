@@ -3,7 +3,9 @@ using FinancialThrottleService.Infrastructure.Logging;
 using FinancialThrottleService.Infrastructure.Models.Generated;
 using FinancialThrottleService.Infrastructure.Models.Generated.RAS;
 using FinancialThrottleService.Infrastructure.Models.Generated.RAS107;
+using FinancialThrottleService.Infrastructure.Models.Generated.RAS107_PROD;
 using FinancialThrottleService.Infrastructure.Models.Generated.RAS32501;
+using FinancialThrottleService.Infrastructure.Models.Generated.RAS32501_PROD;
 using FinancialThrottleService.Infrastructure.Persistence.Dummy;
 using FinancialThrottleService.Infrastructure.Persistence.Sql;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +31,12 @@ namespace FinancialThrottleService.Infrastructure
 
             services.AddDbContext<RasStaj32501Context>(options =>
                 options.UseSqlServer(configuration.GetConnectionString("RasStaj32501")));
+
+            services.AddDbContext<Ras107Context>(options =>
+              options.UseSqlServer(configuration.GetConnectionString("Ras107")));
+
+            services.AddDbContext<Ras32501Context>(options =>
+              options.UseSqlServer(configuration.GetConnectionString("Ras32501")));
 
             if (useDummyData)
             {

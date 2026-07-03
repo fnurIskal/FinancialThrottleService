@@ -11,6 +11,7 @@ namespace FinancialThrottleService.Application.Interfaces
             string databaseName,
             int securityId,
             int templateId,
-            int quarter);
+            int quarter,
+            int? itemQuarterlyCode = null);
     }
 }
