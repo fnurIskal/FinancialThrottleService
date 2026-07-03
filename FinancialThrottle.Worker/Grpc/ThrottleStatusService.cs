@@ -89,7 +89,8 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
                 OrderType = group.OrderType,
                 Status = _retryTracker.IsSuspended(group.GroupKey) ? "suspended"
                        : _retryTracker.IsWaiting(group.GroupKey) ? "waiting"
-                       : "queued"
+                       : "queued",
+                WaitReason = _retryTracker.GetWaitReason(group.GroupKey)
             };
 
             foreach (var item in group.Items)
@@ -99,7 +100,8 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
                     Quarter = item.Quarter,
                     IsOriginal = item.IsOriginal,
                     Username = item.Username,
-                    DisclosureId = item.DisclosureId
+                    DisclosureId = item.DisclosureId,
+                    TableTypeId = item.TableTypeId
                 });
             }
 
@@ -145,7 +147,8 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
                 FailureCount = group.FailureCount,
                 FirstFailedUtc = group.FirstFailedAt.ToString("O"),
                 NextRetryUtc = group.NextRetryAt.ToString("O"),
-                RetryInProgress = group.RetryInProgress
+                RetryInProgress = group.RetryInProgress,
+                LastError = group.LastError
             });
         }
 

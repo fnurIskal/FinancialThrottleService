@@ -6,6 +6,7 @@ import type {
   SuspendedResponse,
   RetryResponse,
   ForceSendResponse,
+  CheckerResponse,
 } from '../types';
 
 export const fetchQueue = (): Promise<QueueResponse> =>
@@ -50,4 +51,16 @@ export const forceSendSuspended = (
 ): Promise<ForceSendResponse> =>
   api
     .post<ForceSendResponse>(`/suspended/${databaseName}/${securityId}/${templateId}/force-send`)
+    .then(r => r.data);
+
+export const fetchChecker = (
+  databaseName: string,
+  securityId: number,
+  templateId: number,
+  quarter: number
+): Promise<CheckerResponse> =>
+  api
+    .get<CheckerResponse>('/checker', {
+      params: { databaseName, securityId, templateId, quarter }
+    })
     .then(r => r.data);

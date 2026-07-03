@@ -106,7 +106,7 @@ export default function SuspendedPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-gray-100">
-                  {["Database", "Security", "Template", "First Error", "Attempts", "Next Retry", "Actions"].map((h) => (
+                  {["Database", "Security", "Template", "First Error", "Attempts", "Next Retry", "Failure Reason", "Actions"].map((h) => (
                     <th key={h} className="text-left text-gray-400 font-medium py-2 pr-4">{h}</th>
                   ))}
                 </tr>
@@ -118,6 +118,7 @@ export default function SuspendedPage() {
                   { widthClass: "w-1/4" },
                   { widthClass: "w-3/4" },
                   { widthClass: "w-8" },
+                  { widthClass: "w-3/4" },
                   { widthClass: "w-3/4" },
                   { widthClass: "w-20" },
                 ]} />
@@ -138,6 +139,7 @@ export default function SuspendedPage() {
                     "First Error",
                     "Attempts",
                     "Next Retry",
+                    "Failure Reason",
                     "Actions",
                   ].map((h) => (
                     <th
@@ -174,6 +176,9 @@ export default function SuspendedPage() {
                       </td>
                       <td className="py-3 pr-4 text-gray-500">
                         {formatDate(g.nextRetryUtc)}
+                      </td>
+                      <td className="py-3 pr-4 text-gray-500 text-xs max-w-xs truncate cursor-help" title={g.lastError}>
+                        {g.lastError || "—"}
                       </td>
                       <td className="py-3">
                         <div className="flex items-center gap-2">

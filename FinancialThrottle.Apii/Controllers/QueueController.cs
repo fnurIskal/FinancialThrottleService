@@ -37,12 +37,14 @@ namespace FinancialThrottle.Apii.Controllers
                         itemCount = g.ItemCount,
                         orderType = g.OrderType,
                         status = g.Status,
+                        waitReason = g.WaitReason,
                         items = g.Items.Select(i => new
                         {
                             quarter = i.Quarter,
                             isOriginal = i.IsOriginal,
                             username = i.Username,
-                            disclosureId = i.DisclosureId
+                            disclosureId = i.DisclosureId,
+                            tableTypeId = i.TableTypeId
                         }).ToList()
                     }).ToList()
                 });
@@ -77,13 +79,15 @@ namespace FinancialThrottle.Apii.Controllers
                     templateId = group.TemplateId,
                     securityCode = group.SecurityCode,
                     priorityScore = group.PriorityScore,
-                    itemCount = group.ItemCount, 
+                    itemCount = group.ItemCount,
+                    waitReason = group.WaitReason,
                     items = group.Items.Select(i => new
                     {
                         quarter = i.Quarter,
                         isOriginal = i.IsOriginal,
                         username = i.Username,
-                        disclosureId = i.DisclosureId
+                        disclosureId = i.DisclosureId,
+                        tableTypeId = i.TableTypeId
                     }).ToList()
                 });
             }

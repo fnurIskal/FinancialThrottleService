@@ -38,7 +38,8 @@ namespace FinancialThrottle.Apii.Controllers
                         failureCount = g.FailureCount,
                         firstFailedUtc = g.FirstFailedUtc,
                         nextRetryUtc = g.NextRetryUtc,
-                        retryInProgress = g.RetryInProgress
+                        retryInProgress = g.RetryInProgress,
+                        lastError = g.LastError
                     }).ToList()
                 });
             }

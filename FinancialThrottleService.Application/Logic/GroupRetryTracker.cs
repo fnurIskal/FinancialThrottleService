@@ -11,6 +11,7 @@ namespace FinancialThrottleService.Application.Logic
         private readonly ConcurrentDictionary<string, GroupRetryState> _states = new();
         private readonly ConcurrentDictionary<string, bool> _forceSendKeys = new();
         private readonly ConcurrentDictionary<string, bool> _waitingKeys = new();
+        private readonly ConcurrentDictionary<string, string> _waitingReasons = new();
         private readonly ConcurrentDictionary<string, DateTime> _processedInCycle = new();
 
         public void MarkProcessedInCycle(string groupKey) =>
@@ -35,7 +36,7 @@ namespace FinancialThrottleService.Application.Logic
             TimeSpan.FromDays(1)
         };
 
-        public bool RecordFailure(string groupKey)
+        public bool RecordFailure(string groupKey, string errorMessage = "")
         {
             var state = _states.GetOrAdd(groupKey, key =>
             {
@@ -53,6 +54,7 @@ namespace FinancialThrottleService.Application.Logic
             lock (state)
             {
                 state.FailureCount++;
+                state.LastError = errorMessage;
 
                 if (state.FailureCount >= MaxAttempts && !state.IsSuspended)
                 {
@@ -77,9 +79,22 @@ namespace FinancialThrottleService.Application.Logic
 
         public void ClearForceSend(string groupKey) => _forceSendKeys.TryRemove(groupKey, out _);
 
-        public void RecordWait(string groupKey) => _waitingKeys[groupKey] = true;
-        public void ClearWait(string groupKey) => _waitingKeys.TryRemove(groupKey, out _);
+        public void RecordWait(string groupKey, string reason = "")
+        {
+            _waitingReasons[groupKey] = reason;
+            _waitingKeys[groupKey] = true;
+        }
+
+        public void ClearWait(string groupKey)
+        {
+            _waitingKeys.TryRemove(groupKey, out _);
+            _waitingReasons.TryRemove(groupKey, out _);
+        }
+
         public bool IsWaiting(string groupKey) => _waitingKeys.ContainsKey(groupKey);
+
+        public string GetWaitReason(string groupKey) =>
+            _waitingReasons.TryGetValue(groupKey, out var r) ? r : string.Empty;
 
         public void ForceRetry(string groupKey)
         {
@@ -104,7 +119,7 @@ namespace FinancialThrottleService.Application.Logic
                 lock (state) { state.RetryInProgress = true; }
         }
 
-        public void RecordSuspendRetryFailure(string groupKey)
+        public void RecordSuspendRetryFailure(string groupKey, string errorMessage = "")
         {
             if (!_states.TryGetValue(groupKey, out var state)) return;
 
@@ -112,6 +127,7 @@ namespace FinancialThrottleService.Application.Logic
             {
                 state.RetryInProgress = false;
                 state.FailureCount++;
+                state.LastError = errorMessage;
 
                 int nextIndex = Math.Min(
                     state.SuspendRetryIndex + 1,
@@ -149,7 +165,8 @@ namespace FinancialThrottleService.Application.Logic
                     FailureCount = s.FailureCount,
                     FirstFailedAt = s.FirstFailedAt,
                     NextRetryAt = s.NextRetryAt,
-                    RetryInProgress = s.RetryInProgress
+                    RetryInProgress = s.RetryInProgress,
+                    LastError = s.LastError
                 })
                 .ToList();
         }
@@ -171,6 +188,7 @@ namespace FinancialThrottleService.Application.Logic
             public DateTime FirstFailedAt { get; set; }
             public DateTime NextRetryAt { get; set; }
             public int SuspendRetryIndex { get; set; }
+            public string LastError { get; set; } = string.Empty;
         }
     }
 }

@@ -58,6 +58,7 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                         IsOriginal = w.IsOriginal,
                         Username = w.Username ?? "",
                         DisclosureId = w.DisclosureId,
+                        TableTypeId = w.TableTypeId,
                         SendEmail = w.SendEmail ?? false
                     }).ToList()
                 })
@@ -401,21 +402,27 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
 
         public async Task DeleteFromQueueAsync(
             string databaseName, int securityId, int quarter, int templateId,
-            int disclosureId, bool isOriginal, List<int> tableTypeIds)
+            int disclosureId, bool isOriginal, List<int> tableTypeIds,
+            bool forceSend = false)
         {
-            var rows = await _context.WaitingFinancialTables
+            IQueryable<WaitingFinancialTable> query = _context.WaitingFinancialTables
                 .Where(w => w.DatabaseName == databaseName &&
                             w.SecurityId == securityId &&
                             w.Quarter == quarter &&
-                            w.TemplateId == templateId &&
-                            w.IsOriginal == isOriginal &&
-                            w.DisclosureId == disclosureId &&
-                            tableTypeIds.Contains(w.TableTypeId))
-                .ToListAsync();
+                            w.TemplateId == templateId);
+
+            if (!forceSend)
+            {
+                query = query.Where(w => w.IsOriginal == isOriginal &&
+                                          w.DisclosureId == disclosureId &&
+                                          tableTypeIds.Contains(w.TableTypeId));
+            }
+
+            var rows = await query.ToListAsync();
 
             _context.WaitingFinancialTables.RemoveRange(rows);
             await _context.SaveChangesAsync();
-            Console.WriteLine($"[INFO] DeleteFromQueueAsync: removed {rows.Count} row(s) for {databaseName}/{securityId}/Q{quarter}/T{templateId}");
+            Console.WriteLine($"[INFO] DeleteFromQueueAsync: removed {rows.Count} row(s) for {databaseName}/{securityId}/Q{quarter}/T{templateId} forceSend={forceSend}");
         }
 
         public async Task WriteAliveSqlAsync()

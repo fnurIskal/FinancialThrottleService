@@ -141,7 +141,7 @@ export default function QueuePage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-gray-100">
-                  {["Database", "Security Code", "Template", "Items", "Status", "Actions"].map((h) => (
+                  {["Database", "Security Code", "Template", "Items", "Status", "Wait Reason", "Actions"].map((h) => (
                     <th key={h} className="text-left text-gray-400 font-medium py-2 pr-4">{h}</th>
                   ))}
                 </tr>
@@ -153,6 +153,7 @@ export default function QueuePage() {
                   { widthClass: "w-1/4" },
                   { widthClass: "w-8" },
                   { widthClass: "w-14" },
+                  { widthClass: "w-3/4" },
                   { widthClass: "w-14" },
                 ]} />
               </tbody>
@@ -179,6 +180,7 @@ export default function QueuePage() {
                     "Template",
                     "Items",
                     "Status",
+                    "Wait Reason",
                     "Actions",
                   ].map((h) => (
                     <th
@@ -218,6 +220,9 @@ export default function QueuePage() {
                          : g.status === "waiting" ? "Waiting"
                          : "Queued"}
                       </Badge>
+                    </td>
+                    <td className="py-3 pr-4 text-gray-500 text-xs max-w-xs truncate" title={g.waitReason}>
+                      {g.status === "waiting" ? (g.waitReason || "—") : "—"}
                     </td>
                     <td className="py-3">
                       <div className="flex gap-2">

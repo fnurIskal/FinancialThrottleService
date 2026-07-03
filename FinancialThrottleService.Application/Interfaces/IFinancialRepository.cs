@@ -47,6 +47,7 @@ namespace FinancialThrottleService.Application.Interfaces
         int templateId,
         int disclosureId,
         bool isOriginal,
-        List<int> tableTypeIds);
+        List<int> tableTypeIds,
+        bool forceSend = false);
     }
 }

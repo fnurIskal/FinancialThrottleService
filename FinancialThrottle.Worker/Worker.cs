@@ -358,7 +358,8 @@ namespace FinancialThrottle.Worker
                             break;
 
                         case SendCondition.Wait:
-                            _retryTracker.RecordWait(group.GroupKey);
+                            var waitReason = $"Required=[{string.Join(",", requiredTypeIds)}] but present=[{string.Join(",", tableTypeIds)}] — missing=[{string.Join(",", requiredTypeIds.Except(tableTypeIds))}]";
+                            _retryTracker.RecordWait(group.GroupKey, waitReason);
                             _logger.LogDebug(
                                 "{GroupKey} Quarter={Quarter} henüz hazır değil",
                                 group.GroupKey, item.Quarter);
@@ -420,7 +421,7 @@ namespace FinancialThrottle.Worker
                         Exception = ex.ToString()
                     });
 
-                    bool suspended = _retryTracker.RecordFailure(group.GroupKey);
+                    bool suspended = _retryTracker.RecordFailure(group.GroupKey, ex.Message);
                     if (suspended)
                     {
                         _logger.LogWarning("{GroupKey} SUSPEND edildi", group.GroupKey);
@@ -476,7 +477,7 @@ namespace FinancialThrottle.Worker
                     await repository.DeleteFromQueueAsync(
                         group.DatabaseName, group.SecurityId, item.Quarter,
                         group.TemplateId, item.DisclosureId, item.IsOriginal,
-                        tableTypeIds);
+                        tableTypeIds, forceSend: true);
 
                     await _logRepository.WriteAsync(new LogEntry
                     {
@@ -601,7 +602,7 @@ namespace FinancialThrottle.Worker
                 }
                 catch (Exception ex)
                 {
-                    _retryTracker.RecordSuspendRetryFailure(key);
+                    _retryTracker.RecordSuspendRetryFailure(key, ex.Message);
                     _logger.LogError(ex, "{GroupKey} suspend retry başarısız", key);
 
                     await _logRepository.WriteAsync(new LogEntry

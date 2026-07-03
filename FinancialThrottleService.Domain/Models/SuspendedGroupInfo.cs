@@ -14,6 +14,7 @@ namespace FinancialThrottleService.Domain.Models
         public DateTime FirstFailedAt { get; set; }
         public DateTime NextRetryAt { get; set; }
         public bool RetryInProgress { get; set; }
+        public string LastError { get; set; } = string.Empty;
         public string GroupKey => $"{DatabaseName}|{SecurityId}|{TemplateId}";
 
     }

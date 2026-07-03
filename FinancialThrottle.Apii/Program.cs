@@ -1,6 +1,8 @@
 using FinancialThrottle.Grpc;
+using FinancialThrottleService.Application.Interfaces;
 using FinancialThrottleService.Infrastructure;
 using FinancialThrottleService.Infrastructure.Models.Generated.RAS;
+using FinancialThrottleService.Infrastructure.Persistence.Sql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 
@@ -27,6 +29,8 @@ builder.Services.AddGrpcClient<ThrottleService.ThrottleServiceClient>(o =>
 
 builder.Services.AddDbContext<RasStajContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<ICheckerRepository, SqlCheckerRepository>();
 
 // Swagger Yapılandırması
 builder.Services.AddEndpointsApiExplorer();

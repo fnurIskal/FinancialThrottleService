@@ -60,6 +60,16 @@ export default function GroupDetailModal({ group, onClose }: Props) {
                   <div className="text-xs text-gray-400 mt-0.5">
                     Disclosure #{item.disclosureId} · {item.username}
                   </div>
+                  <div className="mt-1">
+                    <span className="text-gray-400 text-xs">Table Type: </span>
+                    <span className="text-gray-900 text-xs font-medium">
+                      {item.tableTypeId === 1 ? "1 — Quarterly"
+                       : item.tableTypeId === 2 ? "2 — TTM"
+                       : item.tableTypeId === 3 ? "3 — Footnotes"
+                       : item.tableTypeId === 4 ? "4 — Attachments"
+                       : `${item.tableTypeId}`}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}

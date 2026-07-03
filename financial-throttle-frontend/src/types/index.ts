@@ -3,6 +3,7 @@ export interface WaitingItem {
   isOriginal: boolean;
   username: string;
   disclosureId: number;
+  tableTypeId: number;
 }
 
 export interface WaitingGroup {
@@ -14,6 +15,7 @@ export interface WaitingGroup {
   items: WaitingItem[];
   orderType?: number;
   status?: string;
+  waitReason?: string;
 }
 
 export interface QueueResponse {
@@ -63,6 +65,7 @@ export interface SuspendedGroup {
   firstFailedUtc: string;
   nextRetryUtc: string;
   retryInProgress: boolean;
+  lastError?: string;
 }
 
 export interface SuspendedResponse {
@@ -88,4 +91,30 @@ export interface ForceSendResponse {
   message: string;
 }
 
-export type Page = 'dashboard' | 'queue' | 'suspended' | 'logs' | 'settings';
+export interface CheckerItemResult {
+  itemQuarterlyCode: number | null;
+  inQuarterly: boolean;
+  inQuarterlyOriginal: boolean;
+  status: 'processed' | 'not_found';
+}
+
+export interface CheckerResponse {
+  databaseName: string;
+  securityId: number;
+  templateId: number;
+  quarter: number;
+  totalCount: number;
+  processedCount: number;
+  notFoundCount: number;
+  items: CheckerItemResult[];
+}
+
+export type Page = 'dashboard' | 'queue' | 'suspended' | 'logs' | 'settings' | 'checker';
+
+export interface CheckerState {
+  databaseName: string;
+  securityId: string;
+  templateId: string;
+  quarter: string;
+  response: CheckerResponse | null;
+}

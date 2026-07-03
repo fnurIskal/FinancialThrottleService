@@ -42,6 +42,7 @@ message WaitingGroupMessage {
     repeated WaitingItemMessage items = 7;
     int32  order_type     = 8;
     string status         = 9;
+    string wait_reason    = 10;
 }
 
 message WaitingItemMessage {
@@ -49,6 +50,7 @@ message WaitingItemMessage {
     bool   is_original   = 2;
     string username      = 3;
     int32  disclosure_id = 4;
+    int32  table_type_id = 5;
 }
 
 // SUSPENDED
@@ -67,6 +69,7 @@ message SuspendedGroupMessage {
     string first_failed_utc  = 6;
     string next_retry_utc    = 7;
     bool   retry_in_progress = 8;
+    string last_error        = 9;
 }
 
 // RETRY

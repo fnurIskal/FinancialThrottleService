@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   FileText,
   Settings,
+  Search,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -20,7 +21,8 @@ const menuItems: { id: Page; label: string; icon: React.ReactNode }[] = [
   { id: "queue", label: "Queue", icon: <List size={18} /> },
   { id: "suspended", label: "Suspended", icon: <AlertTriangle size={18} /> },
   { id: "logs", label: "Logs", icon: <FileText size={18} /> },
-  { id: "settings", label: "Settings", icon: <Settings size={18} /> },
+  { id: "checker", label: "Checker", icon: <Search size={18} /> },
+  // { id: "settings", label: "Settings", icon: <Settings size={18} /> },
 ];
 
 export default function Sidebar({ activePage, onNavigate }: SidebarProps) {

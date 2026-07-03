@@ -184,9 +184,10 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Dummy
 
         public Task DeleteFromQueueAsync(
             string databaseName, int securityId, int quarter, int templateId,
-            int disclosureId, bool isOriginal, List<int> tableTypeIds)
+            int disclosureId, bool isOriginal, List<int> tableTypeIds,
+            bool forceSend = false)
         {
-            Console.WriteLine($"[DUMMY] DeleteFromQueueAsync: {databaseName}/{securityId}/Q{quarter}/T{templateId}");
+            Console.WriteLine($"[DUMMY] DeleteFromQueueAsync: {databaseName}/{securityId}/Q{quarter}/T{templateId} forceSend={forceSend}");
             return Task.CompletedTask;
         }
     }
