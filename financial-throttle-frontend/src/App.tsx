@@ -26,6 +26,7 @@ export default function App() {
     securityId: '',
     templateId: '',
     quarter: '',
+    itemQuarterlyCode: '',
     response: null,
   });
 

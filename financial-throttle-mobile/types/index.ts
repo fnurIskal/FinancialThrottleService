@@ -32,30 +32,6 @@ export interface StatusResponse {
   avgProcessTimeMs?: number;
 }
 
-export interface LogEntry {
-  id?: string;
-  timestamp: string;
-  level: string;
-  category: string;
-  message: string;
-  groupKey?: string;
-  securityCode?: string;
-  databaseName?: string;
-  securityId?: number;
-  templateId?: number;
-  quarter?: number;
-  exception?: string | null;
-  metadata?: unknown;
-}
-
-export interface LogsResponse {
-  logs: LogEntry[];
-  totalCount: number;
-  date: string;
-  category?: string;
-  level?: string;
-}
-
 export interface SuspendedGroup {
   databaseName: string;
   securityId: number;
@@ -80,13 +56,6 @@ export interface RetryResponse {
   nextRetryTime: string;
 }
 
-export interface ProcessResponse {
-  success: boolean;
-  message: string;
-  groupKey: string;
-  timestamp: string;
-}
-
 export interface ForceSendResponse {
   message: string;
 }
@@ -109,15 +78,4 @@ export interface CheckerResponse {
   processedCount: number;
   notFoundCount: number;
   items: CheckerItemResult[];
-}
-
-export type Page = 'dashboard' | 'queue' | 'suspended' | 'logs' | 'settings' | 'checker';
-
-export interface CheckerState {
-  databaseName: string;
-  securityId: string;
-  templateId: string;
-  quarter: string;
-  itemQuarterlyCode: string;
-  response: CheckerResponse | null;
 }
