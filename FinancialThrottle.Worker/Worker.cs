@@ -701,6 +701,12 @@ namespace FinancialThrottle.Worker
                 _logger.LogInformation(
                     "Suspend e-posta kuyruğa eklendi → {GroupKey}", group.GroupKey);
 
+                var notificationService = scope.Value.ServiceProvider
+                    .GetRequiredService<INotificationService>();
+
+                await notificationService.SendSuspendedNotificationAsync(
+                    group.GroupKey, _retryTracker.GetLastError(group.GroupKey));
+
                 await _logRepository.WriteAsync(new LogEntry
                 {
                     Timestamp = DateTime.UtcNow,

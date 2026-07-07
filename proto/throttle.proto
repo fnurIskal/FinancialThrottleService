@@ -11,6 +11,7 @@ service ThrottleService {
     rpc RetryGroup (RetryGroupRequest) returns (RetryGroupResponse);
     rpc ForceSendGroup (ForceSendRequest) returns (ForceSendResponse);
     rpc StreamLogs (LogStreamRequest) returns (stream LogEntry);
+    rpc RegisterPushToken (RegisterPushTokenRequest) returns (RegisterPushTokenResponse);
 }
 
 // STATUS
@@ -92,6 +93,16 @@ message ForceSendRequest {
 }
 
 message ForceSendResponse {
+    bool   success = 1;
+    string message = 2;
+}
+
+// PUSH TOKEN
+message RegisterPushTokenRequest {
+    string token = 1;
+}
+
+message RegisterPushTokenResponse {
     bool   success = 1;
     string message = 2;
 }

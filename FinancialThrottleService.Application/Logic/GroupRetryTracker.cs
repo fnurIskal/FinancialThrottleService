@@ -1,8 +1,10 @@
-﻿using FinancialThrottleService.Domain.Models;
+﻿using FinancialThrottleService.Application.Interfaces;
+using FinancialThrottleService.Domain.Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace FinancialThrottleService.Application.Logic
 {
@@ -38,6 +40,9 @@ namespace FinancialThrottleService.Application.Logic
 
         public bool RecordFailure(string groupKey, string errorMessage = "")
         {
+            _states.TryGetValue(groupKey, out var existingState);
+            Console.WriteLine($"[TRACKER] RecordFailure called for {groupKey}, count will be {existingState?.FailureCount + 1}");
+
             var state = _states.GetOrAdd(groupKey, key =>
             {
                 var parts = key.Split('|');
@@ -61,6 +66,9 @@ namespace FinancialThrottleService.Application.Logic
                     state.IsSuspended = true;
                     state.SuspendRetryIndex = 0;
                     state.NextRetryAt = DateTime.UtcNow.Add(RetrySchedule[0]);
+
+                    Console.WriteLine($"[TRACKER] Group {groupKey} is now SUSPENDED");
+
                     return true;
                 }
             }
@@ -145,6 +153,9 @@ namespace FinancialThrottleService.Application.Logic
 
         public bool IsSuspended(string groupKey) =>
             _states.TryGetValue(groupKey, out var s) && s.IsSuspended;
+
+        public string GetLastError(string groupKey) =>
+            _states.TryGetValue(groupKey, out var s) ? s.LastError : string.Empty;
 
         public bool IsRetryDue(string groupKey) =>
             _states.TryGetValue(groupKey, out var s) &&

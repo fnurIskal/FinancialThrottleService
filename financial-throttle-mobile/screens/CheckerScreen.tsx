@@ -105,8 +105,8 @@ export default function CheckerScreen() {
             end={{ x: 1, y: 1 }}
             style={[styles.header, { paddingTop: insets.top }]}
           >
-            <Text style={styles.greeting}>Financial Throttle Service,</Text>
-            <Text style={styles.title}>Suspended</Text>
+            <Text style={styles.greeting}>Financial Throttle Service</Text>
+            <Text style={styles.title}>Checker</Text>
           </LinearGradient>
         </View>
       </View>

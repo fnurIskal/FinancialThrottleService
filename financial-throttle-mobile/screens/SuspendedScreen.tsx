@@ -39,7 +39,9 @@ export default function SuspendedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [forceSendTarget, setForceSendTarget] = useState<SuspendedGroup | null>(null);
+  const [forceSendTarget, setForceSendTarget] = useState<SuspendedGroup | null>(
+    null,
+  );
 
   const load = useCallback(async () => {
     try {
@@ -117,7 +119,7 @@ export default function SuspendedScreen() {
             end={{ x: 1, y: 1 }}
             style={[styles.header, { paddingTop: insets.top }]}
           >
-            <Text style={styles.greeting}>Financial Throttle Service,</Text>
+            <Text style={styles.greeting}>Financial Throttle Service</Text>
             <Text style={styles.title}>Suspended</Text>
           </LinearGradient>
         </View>
@@ -233,7 +235,10 @@ export default function SuspendedScreen() {
             {[
               { label: "Security", value: forceSendTarget?.securityCode },
               { label: "Database", value: forceSendTarget?.databaseName },
-              { label: "Template ID", value: `#${forceSendTarget?.templateId}` },
+              {
+                label: "Template ID",
+                value: `#${forceSendTarget?.templateId}`,
+              },
             ].map((row) => (
               <View key={row.label} style={styles.modalDetailRow}>
                 <Text style={styles.modalDetailLabel}>{row.label}</Text>
@@ -249,7 +254,9 @@ export default function SuspendedScreen() {
                 <Text style={styles.modalCancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => forceSendTarget && handleForceSend(forceSendTarget)}
+                onPress={() =>
+                  forceSendTarget && handleForceSend(forceSendTarget)
+                }
                 style={styles.modalForceButton}
               >
                 <Text style={styles.modalForceButtonText}>Force Send</Text>

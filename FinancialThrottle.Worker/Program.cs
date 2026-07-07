@@ -2,6 +2,7 @@ using FinancialThrottle.Worker;
 using FinancialThrottleService.Application.Interfaces;
 using FinancialThrottleService.Application.Logic;
 using FinancialThrottleService.Infrastructure;
+using FinancialThrottleService.Infrastructure.Notifications;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 
@@ -15,6 +16,16 @@ var useDummyData = builder.Configuration.GetValue<bool>("ThrottleOptions:UseDumm
 
 // GroupRetryTracker
 builder.Services.AddSingleton<GroupRetryTracker>();
+
+// Push notifications (Expo)
+builder.Services.AddHttpClient("expo", c =>
+{
+    c.BaseAddress = new Uri("https://exp.host");
+    c.DefaultRequestHeaders.Add("Accept", "application/json");
+    c.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
+});
+builder.Services.AddSingleton<IPushTokenStore, InMemoryPushTokenStore>();
+builder.Services.AddSingleton<INotificationService, ExpoNotificationService>();
 
 // SendConditionEvaluator
 if (useDummyData)

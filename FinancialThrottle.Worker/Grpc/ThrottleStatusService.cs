@@ -12,6 +12,7 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
     private readonly ILogger<ThrottleStatusService> _logger;
     private readonly IFinancialRepository _repository;
     private readonly ISecurityPriorityClient _priorityClient;
+    private readonly IPushTokenStore _pushTokenStore;
     private readonly string _turkeyDb;
 
     public ThrottleStatusService(
@@ -19,12 +20,14 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
         ILogger<ThrottleStatusService> logger,
         IFinancialRepository repository,
         ISecurityPriorityClient priorityClient,
+        IPushTokenStore pushTokenStore,
         IConfiguration configuration)
     {
         _retryTracker = retryTracker;
         _logger = logger;
         _repository = repository;
         _priorityClient = priorityClient;
+        _pushTokenStore = pushTokenStore;
         _turkeyDb = configuration["DatabaseNames:Turkey"] ?? "RAS_STAJ107";
     }
 
@@ -190,6 +193,35 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
         {
             Success = true,
             Message = $"{groupKey} it will be retried in the next cycle."
+        });
+    }
+
+    public override Task<RegisterPushTokenResponse> RegisterPushToken(
+        RegisterPushTokenRequest request,
+        ServerCallContext context)
+    {
+        var token = request.Token;
+        bool isValidFormat = !string.IsNullOrWhiteSpace(token)
+            && (token.StartsWith("ExponentPushToken[") || token.StartsWith("ExpoPushToken["))
+            && token.EndsWith("]");
+
+        if (!isValidFormat)
+        {
+            _logger.LogWarning("[PUSH] Rejected push token registration with invalid format: {Token}", token);
+            return Task.FromResult(new RegisterPushTokenResponse
+            {
+                Success = false,
+                Message = "Token must be a valid Expo push token, e.g. ExponentPushToken[...]"
+            });
+        }
+
+        _pushTokenStore.SetToken(token);
+        _logger.LogInformation("[PUSH] Registered push token: {Token}", request.Token);
+
+        return Task.FromResult(new RegisterPushTokenResponse
+        {
+            Success = true,
+            Message = "Token registered"
         });
     }
 }
