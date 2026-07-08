@@ -112,6 +112,7 @@ export default function App() {
     NavigationBar.setBehaviorAsync("overlay-swipe");
   }, []);
 
+
   useEffect(() => {
     registerForPushNotifications();
   }, []);
