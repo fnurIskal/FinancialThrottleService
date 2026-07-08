@@ -127,3 +127,52 @@ docker-compose down
 # Stop and remove data
 docker-compose down -v
 ```
+
+---
+
+## 6. Mobile App (Expo) — Local Setup
+
+The backend is not deployed to a public server yet. Until it is, anyone running the mobile app must point it at a backend reachable on their **own local network** — the app cannot reach a backend running on someone else's machine.
+
+### Prerequisites
+
+- Node.js LTS + npm
+- Backend running on your machine (Docker — see Section 5, or `dotnet run` — see Section 4)
+- Expo Go app (quick testing) or an Android emulator/device
+
+### Steps
+
+1. Start the backend and confirm it's reachable at `http://localhost:5059/api/status`.
+2. Find your machine's LAN IP:
+   - Windows: `ipconfig` → IPv4 Address (WiFi adapter)
+   - macOS/Linux: `ifconfig` or `ip addr`
+3. Update `financial-throttle-mobile/constants/api.ts`:
+   ```ts
+   const LOCAL_IP = "YOUR_LAN_IP"; // e.g. 192.168.1.42
+   ```
+4. Make sure your phone/emulator and the backend machine are on the **same WiFi network**.
+5. If Windows Firewall blocks the connection, add an inbound rule allowing TCP port 5059.
+6. Install and run:
+   ```bash
+   cd financial-throttle-mobile
+   npm install
+   npm start        # Expo Go / dev client
+   # or
+   npm run android  # run on connected device/emulator
+   ```
+
+### Building a distributable APK
+
+```bash
+npm install -g eas-cli
+eas login
+eas build --platform android --profile preview
+```
+
+The `preview` profile in `eas.json` is configured to output a `.apk` (default profiles output `.aab`).
+
+If installing the release APK on a device (not via Expo Go), your LAN IP must also be listed in `android/app/src/main/res/xml/network_security_config.xml` — Android blocks plain `http://` traffic by default in release builds.
+
+### Note
+
+This whole setup only works while the phone and the backend are on the same local network. Once the backend is deployed to a public server, replace `LOCAL_IP` in `constants/api.ts` with the production URL (ideally HTTPS) — at that point the network security config and LAN restrictions above no longer apply.
