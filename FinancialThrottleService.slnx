@@ -9,4 +9,7 @@
     <Project Path="FinancialThrottleService.Domain/FinancialThrottleService.Domain.csproj" />
     <Project Path="FinancialThrottleService.Infrastructure/FinancialThrottleService.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="FinancialThrottleService.Application.Tests/FinancialThrottleService.Application.Tests.csproj" />
+  </Folder>
 </Solution>
