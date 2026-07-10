@@ -34,8 +34,8 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
             int quarter,
             int? itemQuarterlyCode = null)
         {
-            List<(int? Code, string Definition)> quarterlyItems = new();
-            List<(int? Code, string Definition)> quarterlyOriginalItems = new();
+            List<(int? Code, string Definition, int Order, double? Value)> quarterlyItems = new();
+            List<(int? Code, string Definition, int Order, double? Value)> quarterlyOriginalItems = new();
 
             if (IsTurkeyDb(databaseName))
             {
@@ -44,7 +44,8 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                                 q.TemplateId == templateId &&
                                 q.Quarter == quarter &&
                                 (itemQuarterlyCode == null || q.ItemQuarterlyCode == itemQuarterlyCode))
-                    .Select(q => ValueTuple.Create(q.ItemQuarterlyCode, q.OriginalDefinition ?? string.Empty))
+                    .OrderBy(q => q.Order)
+                    .Select(q => ValueTuple.Create(q.ItemQuarterlyCode, q.OriginalDefinition ?? string.Empty, q.Order, q.ItemValue))
                     .Distinct()
                     .ToListAsync();
 
@@ -53,7 +54,8 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                                 q.TemplateId == templateId &&
                                 q.Quarter == quarter &&
                                 (itemQuarterlyCode == null || q.ItemQuarterlyCode == itemQuarterlyCode))
-                    .Select(q => ValueTuple.Create(q.ItemQuarterlyCode, q.OriginalDefinition ?? string.Empty))
+                    .OrderBy(q => q.Order)
+                    .Select(q => ValueTuple.Create(q.ItemQuarterlyCode, q.OriginalDefinition ?? string.Empty, q.Order, q.ItemValue))
                     .Distinct()
                     .ToListAsync();
             }
@@ -64,7 +66,8 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                                 q.TemplateId == templateId &&
                                 q.Quarter == quarter &&
                                 (itemQuarterlyCode == null || q.ItemQuarterlyCode == itemQuarterlyCode))
-                    .Select(q => ValueTuple.Create(q.ItemQuarterlyCode, q.OriginalDefinition ?? string.Empty))
+                    .OrderBy(q => q.Order)
+                    .Select(q => ValueTuple.Create(q.ItemQuarterlyCode, q.OriginalDefinition ?? string.Empty, q.Order, q.ItemValue))
                     .Distinct()
                     .ToListAsync();
 
@@ -73,7 +76,8 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                                 q.TemplateId == templateId &&
                                 q.Quarter == quarter &&
                                 (itemQuarterlyCode == null || q.ItemQuarterlyCode == itemQuarterlyCode))
-                    .Select(q => ValueTuple.Create(q.ItemQuarterlyCode, q.OriginalDefinition ?? string.Empty))
+                    .OrderBy(q => q.Order)
+                    .Select(q => ValueTuple.Create(q.ItemQuarterlyCode, q.OriginalDefinition ?? string.Empty, q.Order, q.ItemValue))
                     .Distinct()
                     .ToListAsync();
             }
@@ -105,19 +109,36 @@ namespace FinancialThrottleService.Infrastructure.Persistence.Sql
                 var qItem = quarterlyItems.FirstOrDefault(q => q.Code == code);
                 var qoItem = quarterlyOriginalItems.FirstOrDefault(q => q.Code == code);
 
-                bool inQ = qItem != default;
-                bool inQO = qoItem != default;
+                bool inQ = qItem.Code != null;
+                bool inQO = qoItem.Code != null;
                 string definition = !string.IsNullOrEmpty(qItem.Definition) ? qItem.Definition : qoItem.Definition ?? string.Empty;
+                // Rapor sırasını (order) korumak için: önce Quarterly'deki, yoksa QuarterlyOriginal'daki order kullanılır.
+                int sortOrder = inQ ? qItem.Order : qoItem.Order;
 
-                return new CheckerItemResult
-                {
-                    ItemQuarterlyCode = code,
-                    OriginalDefinition = definition,
-                    InQuarterly = inQ,
-                    InQuarterlyOriginal = inQO,
-                    Status = inQ || inQO ? "processed" : "not_found"
-                };
-            }).ToList();
+                double? quarterlyValue = inQ ? qItem.Value : null;
+                double? originalValue = inQO ? qoItem.Value : null;
+                bool? valuesMatch = (quarterlyValue.HasValue && originalValue.HasValue)
+                    ? quarterlyValue.Value == originalValue.Value
+                    : null;
+
+                return (
+                    Result: new CheckerItemResult
+                    {
+                        ItemQuarterlyCode = code,
+                        OriginalDefinition = definition,
+                        InQuarterly = inQ,
+                        InQuarterlyOriginal = inQO,
+                        Status = inQ || inQO ? "processed" : "not_found",
+                        QuarterlyValue = quarterlyValue,
+                        OriginalValue = originalValue,
+                        ValuesMatch = valuesMatch
+                    },
+                    SortOrder: sortOrder
+                );
+            })
+            .OrderBy(x => x.SortOrder)
+            .Select(x => x.Result)
+            .ToList();
         }
     }
 }

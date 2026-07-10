@@ -11,5 +11,8 @@ namespace FinancialThrottleService.Domain.Models
         public bool InQuarterly { get; set; }
         public bool InQuarterlyOriginal {  get; set; }
         public string Status { get; set; } = string.Empty;
+        public double? QuarterlyValue { get; set; }
+        public double? OriginalValue { get; set; }
+        public bool? ValuesMatch { get; set; }
     }
 }

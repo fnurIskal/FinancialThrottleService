@@ -6,6 +6,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as NavigationBar from "expo-navigation-bar";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import * as SplashScreen from "expo-splash-screen";
+import AnimatedSplash from "./components/AnimatedSplash";
 import FloatingTabBar from "./components/FloatingTabBar";
 import NotificationBanner, {
   NotificationBannerData,
@@ -17,6 +19,10 @@ import { api } from "./constants/api";
 import Constants from "expo-constants";
 
 const Tab = createBottomTabNavigator();
+
+// Native splash, kendi animasyonlu splash ekranımızı gösterene kadar
+// otomatik kapanmasın.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -105,6 +111,7 @@ async function registerTokenWithBackend(
 
 export default function App() {
   const [banner, setBanner] = useState<NotificationBannerData | null>(null);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -147,6 +154,14 @@ export default function App() {
       responseSub.remove();
     };
   }, []);
+
+  if (showSplash) {
+    return (
+      <SafeAreaProvider>
+        <AnimatedSplash onFinish={() => setShowSplash(false)} />
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>

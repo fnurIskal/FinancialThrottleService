@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -31,6 +31,97 @@ function formatDate(iso?: string) {
     return iso;
   }
 }
+
+// Bu uzunluğu geçen failure reason'lar 2 satıra sığmayabilir —
+// bu durumda "Show more / Show less" toggle'ı gösterilir.
+const REASON_TOGGLE_THRESHOLD = 70;
+
+const SuspendedGroupCard = memo(function SuspendedGroupCard({
+  group: g,
+  busy,
+  retrying,
+  onRetry,
+  onForceSendPress,
+}: {
+  group: SuspendedGroup;
+  busy: boolean;
+  retrying: boolean;
+  onRetry: () => void;
+  onForceSendPress: () => void;
+}) {
+  const [reasonExpanded, setReasonExpanded] = useState(false);
+  const needsReasonToggle = (g.lastError?.length ?? 0) > REASON_TOGGLE_THRESHOLD;
+
+  return (
+    <Card style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderMain}>
+          <Text style={styles.title}>{g.databaseName}</Text>
+          <Text style={styles.subtitle}>
+            {g.securityCode} · #{g.templateId}
+          </Text>
+        </View>
+        <Badge variant="failure">{g.failureCount} attempts</Badge>
+      </View>
+
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>First error</Text>
+        <Text style={styles.infoValue}>{formatDate(g.firstFailedUtc)}</Text>
+      </View>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>Next retry</Text>
+        <Text style={styles.infoValue}>{formatDate(g.nextRetryUtc)}</Text>
+      </View>
+      {g.lastError ? (
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Failure reason</Text>
+          <View style={styles.reasonValueCol}>
+            <Text
+              style={styles.infoValue}
+              numberOfLines={reasonExpanded ? undefined : 2}
+            >
+              {g.lastError}
+            </Text>
+            {needsReasonToggle && (
+              <TouchableOpacity onPress={() => setReasonExpanded((v) => !v)}>
+                <Text style={styles.reasonToggleText}>
+                  {reasonExpanded ? "Show less" : "Show more"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      ) : null}
+
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={[
+            styles.button,
+            styles.retryButton,
+            busy && styles.buttonDisabled,
+          ]}
+          disabled={busy}
+          onPress={onRetry}
+        >
+          <Text style={styles.retryButtonText}>
+            {retrying ? "Retrying..." : "Manual Retry"}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.button,
+            styles.forceButton,
+            busy && styles.buttonDisabled,
+          ]}
+          disabled={busy}
+          onPress={onForceSendPress}
+        >
+          <Text style={styles.forceButtonText}>Force Send</Text>
+        </TouchableOpacity>
+      </View>
+    </Card>
+  );
+});
 
 export default function SuspendedScreen() {
   const insets = useSafeAreaInsets();
@@ -141,65 +232,14 @@ export default function SuspendedScreen() {
             const key = keyOf(g);
             const busy = busyKey === key || g.retryInProgress;
             return (
-              <Card key={key} style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.cardHeaderMain}>
-                    <Text style={styles.title}>{g.databaseName}</Text>
-                    <Text style={styles.subtitle}>
-                      {g.securityCode} · #{g.templateId}
-                    </Text>
-                  </View>
-                  <Badge variant="failure">{g.failureCount} attempts</Badge>
-                </View>
-
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>First error</Text>
-                  <Text style={styles.infoValue}>
-                    {formatDate(g.firstFailedUtc)}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Next retry</Text>
-                  <Text style={styles.infoValue}>
-                    {formatDate(g.nextRetryUtc)}
-                  </Text>
-                </View>
-                {g.lastError ? (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Failure reason</Text>
-                    <Text style={styles.infoValue} numberOfLines={2}>
-                      {g.lastError}
-                    </Text>
-                  </View>
-                ) : null}
-
-                <View style={styles.actions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.button,
-                      styles.retryButton,
-                      busy && styles.buttonDisabled,
-                    ]}
-                    disabled={busy}
-                    onPress={() => handleRetry(g)}
-                  >
-                    <Text style={styles.retryButtonText}>
-                      {busyKey === key ? "Retrying..." : "Manual Retry"}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.button,
-                      styles.forceButton,
-                      busy && styles.buttonDisabled,
-                    ]}
-                    disabled={busy}
-                    onPress={() => setForceSendTarget(g)}
-                  >
-                    <Text style={styles.forceButtonText}>Force Send</Text>
-                  </TouchableOpacity>
-                </View>
-              </Card>
+              <SuspendedGroupCard
+                key={key}
+                group={g}
+                busy={busy}
+                retrying={busyKey === key}
+                onRetry={() => handleRetry(g)}
+                onForceSendPress={() => setForceSendTarget(g)}
+              />
             );
           })
         )}
@@ -340,6 +380,21 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flexShrink: 1,
     textAlign: "right",
+  },
+  reasonValueCol: {
+    flexShrink: 1,
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  reasonToggleText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.action,
+  },
+  reasonText: {
+    fontSize: 12,
+    color: colors.textPrimary,
+    lineHeight: 17,
   },
   actions: {
     flexDirection: "row",

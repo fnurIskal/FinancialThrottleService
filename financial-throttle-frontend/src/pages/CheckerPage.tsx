@@ -20,6 +20,11 @@ function BoolIcon({ value }: { value: boolean }) {
   );
 }
 
+function formatValue(value: number | null): string {
+  if (value === null || value === undefined) return "—";
+  return value.toLocaleString("tr-TR");
+}
+
 function ItemsTable({ items }: { items: CheckerItemResult[] }) {
   if (items.length === 0) {
     return (
@@ -38,6 +43,8 @@ function ItemsTable({ items }: { items: CheckerItemResult[] }) {
             "Definition",
             "In Quarterly",
             "In Production",
+            "Quarterly Value",
+            "Production Value",
             "Status",
           ].map((h) => (
             <th
@@ -66,6 +73,20 @@ function ItemsTable({ items }: { items: CheckerItemResult[] }) {
             </td>
             <td className="py-3 pr-4">
               <BoolIcon value={item.inQuarterlyOriginal} />
+            </td>
+            <td
+              className={`py-3 pr-4 font-medium ${
+                item.valuesMatch === false ? "text-red-600" : "text-gray-700"
+              }`}
+            >
+              {formatValue(item.quarterlyValue)}
+            </td>
+            <td
+              className={`py-3 pr-4 font-medium ${
+                item.valuesMatch === false ? "text-red-600" : "text-gray-700"
+              }`}
+            >
+              {formatValue(item.originalValue)}
             </td>
             <td className="py-3 pr-4">
               <Badge

@@ -51,7 +51,10 @@ namespace FinancialThrottle.Apii.Controllers
                         originalDefinition = r.OriginalDefinition,
                         inQuarterly = r.InQuarterly,
                         inQuarterlyOriginal = r.InQuarterlyOriginal,
-                        status = r.Status
+                        status = r.Status,
+                        quarterlyValue = r.QuarterlyValue,
+                        originalValue = r.OriginalValue,
+                        valuesMatch = r.ValuesMatch
                     }).ToList()
                 });
             }

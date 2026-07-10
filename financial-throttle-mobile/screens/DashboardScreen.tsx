@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -36,6 +38,12 @@ function statusBadge(status?: string): {
   return { label: "Queued", variant: "success" };
 }
 
+function formatQuarter(quarter: number) {
+  const s = String(quarter);
+  if (s.length !== 6) return s;
+  return `${s.slice(4, 6)}/${s.slice(0, 4)}`;
+}
+
 interface StatCardProps {
   icon: keyof typeof Ionicons.glyphMap;
   value: string | number;
@@ -63,6 +71,9 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<WaitingGroup | null>(
+    null,
+  );
 
   const load = useCallback(async () => {
     const [statusResult, queueResult] = await Promise.allSettled([
@@ -146,22 +157,113 @@ export default function DashboardScreen() {
           groups.map((g) => {
             const badge = statusBadge(g.status);
             return (
-              <Card
+              <TouchableOpacity
                 key={`${g.databaseName}-${g.securityId}-${g.templateId}`}
-                style={styles.row}
+                activeOpacity={0.7}
+                onPress={() => setSelectedGroup(g)}
               >
-                <View style={styles.rowMain}>
-                  <Text style={styles.rowTitle}>{g.databaseName}</Text>
-                  <Text style={styles.rowSubtitle}>
-                    {g.securityCode} · #{g.templateId} · {g.itemCount} items
-                  </Text>
-                </View>
-                <Badge variant={badge.variant}>{badge.label}</Badge>
-              </Card>
+                <Card style={styles.row}>
+                  <View style={styles.rowMain}>
+                    <Text style={styles.rowTitle}>{g.databaseName}</Text>
+                    <Text style={styles.rowSubtitle}>
+                      {g.securityCode} · #{g.templateId} · {g.itemCount} items
+                    </Text>
+                  </View>
+                  <Badge variant={badge.variant}>{badge.label}</Badge>
+                </Card>
+              </TouchableOpacity>
             );
           })
         )}
       </ScrollView>
+
+      <Modal
+        visible={!!selectedGroup}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedGroup(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>
+                  {selectedGroup?.securityCode}
+                </Text>
+                <Text style={styles.modalSubtitle}>
+                  {selectedGroup?.databaseName} · #{selectedGroup?.templateId}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedGroup(null)}>
+                <Text style={styles.modalClose}>×</Text>
+              </TouchableOpacity>
+            </View>
+
+            {selectedGroup ? (
+              <Badge
+                variant={statusBadge(selectedGroup.status).variant}
+              >
+                {statusBadge(selectedGroup.status).label}
+              </Badge>
+            ) : null}
+
+            <ScrollView style={styles.modalItemsScroll}>
+              {[
+                { label: "Security ID", value: String(selectedGroup?.securityId) },
+                {
+                  label: "Order Type",
+                  value: selectedGroup?.orderType?.toString() ?? "—",
+                },
+                {
+                  label: "Wait Reason",
+                  value: selectedGroup?.waitReason ?? "—",
+                },
+                {
+                  label: "Item Count",
+                  value: String(selectedGroup?.itemCount ?? 0),
+                },
+              ].map((row) => (
+                <View key={row.label} style={styles.modalDetailRow}>
+                  <Text style={styles.modalDetailLabel}>{row.label}</Text>
+                  <Text style={styles.modalDetailValue}>{row.value}</Text>
+                </View>
+              ))}
+
+              <Text style={styles.modalItemsTitle}>Items</Text>
+              {selectedGroup?.items.map((item, idx) => (
+                <View key={idx} style={styles.modalItemCard}>
+                  <View style={styles.modalItemHeader}>
+                    <Text style={styles.modalItemQuarter}>
+                      {formatQuarter(item.quarter)}
+                    </Text>
+                    <Badge variant={item.isOriginal ? "info" : "neutral"}>
+                      {item.isOriginal ? "Original" : "Restated"}
+                    </Badge>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Username</Text>
+                    <Text style={styles.modalDetailValue}>
+                      {item.username}
+                    </Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Disclosure ID</Text>
+                    <Text style={styles.modalDetailValue}>
+                      {item.disclosureId}
+                    </Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Table Type</Text>
+                    <Text style={styles.modalDetailValue}>
+                      {item.tableTypeId}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -273,5 +375,85 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
     paddingVertical: 24,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 24,
+    width: "100%",
+    maxWidth: 380,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  modalClose: {
+    fontSize: 20,
+    color: colors.textSecondary,
+  },
+  modalItemsScroll: {
+    marginTop: 12,
+  },
+  modalDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+  },
+  modalDetailLabel: {
+    color: colors.textSecondary,
+    fontSize: 13,
+  },
+  modalDetailValue: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: "500",
+    flexShrink: 1,
+    textAlign: "right",
+  },
+  modalItemsTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  modalItemCard: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  modalItemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  modalItemQuarter: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.textPrimary,
   },
 });

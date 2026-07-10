@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const LOCAL_IP = "192.168.1.197";
+// AVD emulator kullanırken 10.0.2.2 host makinenin localhost'una karşılık gelir.
+// Gerçek cihazda test ederken bunu bilgisayarının LAN IP'sine geri al (örn. localhost).
+const LOCAL_IP = "localhost";
 
 export const api = axios.create({
   baseURL: `http://${LOCAL_IP}:5059/api`,

@@ -97,6 +97,9 @@ export interface CheckerItemResult {
   inQuarterly: boolean;
   inQuarterlyOriginal: boolean;
   status: 'processed' | 'not_found';
+  quarterlyValue: number | null;
+  originalValue: number | null;
+  valuesMatch: boolean | null;
 }
 
 export interface CheckerResponse {
