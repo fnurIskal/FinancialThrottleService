@@ -194,7 +194,6 @@ The suite targets the pure business-logic classes in `FinancialThrottleService.A
 | `TemplateTableTypeConfig` | `TemplateTableTypeConfigTests.cs`    | `Resolve()` returns the correct required `TableTypeId` list per database/templateId (RAS_STAJ107, ms-source, unknown templateIds); `IsInflationTemplate()` correctly classifies known/unknown template IDs |
 | `GroupRetryTracker`       | `GroupRetryTrackerTests.cs`          | Suspend threshold (9 failures = not suspended, 10th = suspended, 11th doesn't re-trigger); `RecordSuccess` clears state; `RecordWait`/`ClearWait`; `MarkForceSend` immediately un-suspends a group; `IsRetryDue` timing; `GetSuspendedGroups` parses the group key correctly |
 
-`SendConditionEvaluator` is not covered yet — it depends on `IFinancialRepository`, so testing it needs a fake/mock repository first.
 
 ### How to Run
 
