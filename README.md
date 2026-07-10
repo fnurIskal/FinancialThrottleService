@@ -176,3 +176,40 @@ If installing the release APK on a device (not via Expo Go), your LAN IP must al
 ### Note
 
 This whole setup only works while the phone and the backend are on the same local network. Once the backend is deployed to a public server, replace `LOCAL_IP` in `constants/api.ts` with the production URL (ideally HTTPS) — at that point the network security config and LAN restrictions above no longer apply.
+
+---
+
+## 7. Testing
+
+### What We Use
+
+**xUnit** — unit test framework, via `FinancialThrottleService.Application.Tests` (project lives under `/tests/` in the solution). No database, HTTP, or mocking libraries are required for the current tests — the classes under test have no I/O dependencies.
+
+### What Is Tested
+
+The suite targets the pure business-logic classes in `FinancialThrottleService.Application/Logic`, since they contain the actual decision rules and have no external dependencies:
+
+| Class                     | Covered by                          | What it verifies                                                                 |
+| ------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------- |
+| `TemplateTableTypeConfig` | `TemplateTableTypeConfigTests.cs`    | `Resolve()` returns the correct required `TableTypeId` list per database/templateId (RAS_STAJ107, ms-source, unknown templateIds); `IsInflationTemplate()` correctly classifies known/unknown template IDs |
+| `GroupRetryTracker`       | `GroupRetryTrackerTests.cs`          | Suspend threshold (9 failures = not suspended, 10th = suspended, 11th doesn't re-trigger); `RecordSuccess` clears state; `RecordWait`/`ClearWait`; `MarkForceSend` immediately un-suspends a group; `IsRetryDue` timing; `GetSuspendedGroups` parses the group key correctly |
+
+`SendConditionEvaluator` is not covered yet — it depends on `IFinancialRepository`, so testing it needs a fake/mock repository first.
+
+### How to Run
+
+```bash
+dotnet test FinancialThrottleService.Application.Tests
+```
+
+Or run every test project in the solution:
+
+```bash
+dotnet test
+```
+
+To run a single test by name:
+
+```bash
+dotnet test --filter "FullyQualifiedName~RecordFailure_CalledTenthTime_SuspendsGroup"
+```
