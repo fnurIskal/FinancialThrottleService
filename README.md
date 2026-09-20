@@ -1,3 +1,5 @@
+ > Güvenli yapılandırma ve public paylaşım öncesi kalan işlemler: [SECURITY.md](SECURITY.md). Gerçek parolaları aşağıdaki örnek dosyalara yazmayın; ortam değişkenleri kullanın.
+
 # Financial Throttle Service
 
 ## 1. Purpose
@@ -148,7 +150,7 @@ The backend is not deployed to a public server yet. Until it is, anyone running 
    - macOS/Linux: `ifconfig` or `ip addr`
 3. Update `financial-throttle-mobile/constants/api.ts`:
    ```ts
-   const LOCAL_IP = "YOUR_LAN_IP"; // e.g. 192.168.1.42
+   EXPO_PUBLIC_API_URL=http://localhost:5059/api
    ```
 4. Make sure your phone/emulator and the backend machine are on the **same WiFi network**.
 5. If Windows Firewall blocks the connection, add an inbound rule allowing TCP port 5059.

@@ -70,14 +70,13 @@ async function registerForPushNotifications(): Promise<string | null> {
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ??
       Constants.easConfig?.projectId ??
-      "00000000-0000-0000-0000-000000000000";
+      undefined;
 
     const token = (await Notifications.getExpoPushTokenAsync({ projectId }))
       .data;
-    console.log("📱 Expo Push Token:", token);
 
     if (!token.startsWith("ExponentPushToken[")) {
-      console.log("Unexpected push token format, not registering:", token);
+      console.log("Unexpected push token format, not registering");
       return token;
     }
 

@@ -11,11 +11,11 @@ services:
       - ASPNETCORE_URLS=http://+:5059
       - GrpcWorker__Url=http://worker:5000
       # SQL Server Bağlantılarını Docker Ağındaki Servise (financial-throttle-sqlserver) Yönlendiriyoruz:
-      - ConnectionStrings__DefaultConnection=Server=financial-throttle-sqlserver;Database=RAS_STAJ;User Id=sa;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
-      - ConnectionStrings__RasStaj107=Server=financial-throttle-sqlserver;Database=RAS_STAJ107;User Id=sa;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
-      - ConnectionStrings__RasStaj32501=Server=financial-throttle-sqlserver;Database=RAS_STAJ32501;User Id=sa;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
+      - ConnectionStrings__DefaultConnection=Server=financial-throttle-sqlserver;Database=RAS_STAJ;User Id=sa;Password=${SQL_PASSWORD:?Set SQL_PASSWORD in .env};TrustServerCertificate=True;Encrypt=False
+      - ConnectionStrings__RasStaj107=Server=financial-throttle-sqlserver;Database=RAS_STAJ107;User Id=sa;Password=${SQL_PASSWORD:?Set SQL_PASSWORD in .env};TrustServerCertificate=True;Encrypt=False
+      - ConnectionStrings__RasStaj32501=Server=financial-throttle-sqlserver;Database=RAS_STAJ32501;User Id=sa;Password=${SQL_PASSWORD:?Set SQL_PASSWORD in .env};TrustServerCertificate=True;Encrypt=False
       # MongoDB Bağlantısını Docker Ağındaki Servise (financial-throttle-mongodb) Yönlendiriyoruz:
-      - MongoDB__ConnectionString=mongodb://localhost:27017
+      - MongoDB__ConnectionString=mongodb://admin:${MONGO_PASSWORD:?Set MONGO_PASSWORD in .env}@mongodb:27017/?authSource=admin
       - MongoDB__DatabaseName=financial_throttle_logs
     depends_on:
       sqlserver:
@@ -34,10 +34,11 @@ services:
     container_name: financial-throttle-worker
     environment:
       - DOTNET_ENVIRONMENT=Development
+      - MongoDB__ConnectionString=mongodb://admin:${MONGO_PASSWORD:?Set MONGO_PASSWORD in .env}@mongodb:27017/?authSource=admin
       - ThrottleOptions__UseDummyData=false
-      - ConnectionStrings__DefaultConnection=Server=localhost;Database=RAS_STAJ;User Id=sqlserver;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
-      - ConnectionStrings__RasStaj107=Server=localhost;Database=RAS_STAJ107;User Id=sqlserver;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
-      - ConnectionStrings__RasStaj32501=Server=localhost;Database=RAS_STAJ32501;User Id=sqlserver;Password=REMOVED_SECRET;TrustServerCertificate=True;Encrypt=False
+      - ConnectionStrings__DefaultConnection=Server=financial-throttle-sqlserver;Database=RAS_STAJ;User Id=sa;Password=${SQL_PASSWORD:?Set SQL_PASSWORD in .env};TrustServerCertificate=True;Encrypt=False
+      - ConnectionStrings__RasStaj107=Server=financial-throttle-sqlserver;Database=RAS_STAJ107;User Id=sa;Password=${SQL_PASSWORD:?Set SQL_PASSWORD in .env};TrustServerCertificate=True;Encrypt=False
+      - ConnectionStrings__RasStaj32501=Server=financial-throttle-sqlserver;Database=RAS_STAJ32501;User Id=sa;Password=${SQL_PASSWORD:?Set SQL_PASSWORD in .env};TrustServerCertificate=True;Encrypt=False
     depends_on:
       sqlserver:
         condition: service_started
@@ -62,7 +63,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: financial-throttle-sqlserver
     environment:
-      SA_PASSWORD: "REMOVED_SECRET"
+      MSSQL_SA_PASSWORD: "${SQL_PASSWORD:?Set SQL_PASSWORD in .env}"
       ACCEPT_EULA: "Y"
     ports:
       - "1433:1433"

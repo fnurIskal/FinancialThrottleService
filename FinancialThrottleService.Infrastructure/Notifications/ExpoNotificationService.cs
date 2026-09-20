@@ -52,13 +52,10 @@ namespace FinancialThrottleService.Infrastructure.Notifications
                     sound = "default"
                 };
 
-                Console.WriteLine($"[PUSH] Sending suspend notification for {groupKey} using token={token}");
-                Console.WriteLine($"[PUSH] Request payload: to={payload.to}, title={payload.title}, body={payload.body}");
 
                 var response = await _httpClient.PostAsJsonAsync("https://exp.host/--/api/v2/push/send", payload);
                 var responseBody = await response.Content.ReadAsStringAsync();
 
-                Console.WriteLine($"[PUSH] Expo response status={(int)response.StatusCode}, body={responseBody}");
             }
             catch (Exception ex)
             {

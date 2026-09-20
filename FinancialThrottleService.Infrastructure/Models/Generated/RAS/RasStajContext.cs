@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,12 +36,6 @@ public partial class RasStajContext : DbContext
     public virtual DbSet<UtTrcTracerParam> UtTrcTracerParams { get; set; }
 
     public virtual DbSet<WaitingFinancialTable> WaitingFinancialTables { get; set; }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-            optionsBuilder.UseSqlServer("Server=localhost;Database=RAS_STAJ;User Id=sqlserver;Password=REMOVED_SECRET;TrustServerCertificate=True;");
-    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

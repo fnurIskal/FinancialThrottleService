@@ -9,8 +9,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.fnuriskal.financialthrottlemobile",
-      "googleServicesFile": "./google-services.json",
+      "package": "com.example.financialthrottlemobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/AppIcon.png",
         "backgroundColor": "#ffffff"
@@ -34,12 +33,6 @@
           "backgroundColor": "#477DD7"
         }
       ]
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "00000000-0000-0000-0000-000000000000"
-      }
-    },
-    "owner": "fnuriskal"
+    ]
   }
 }

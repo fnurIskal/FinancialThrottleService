@@ -1,4 +1,4 @@
-﻿using FinancialThrottleService.Application.Interfaces;
+using FinancialThrottleService.Application.Interfaces;
 using FinancialThrottleService.Infrastructure.Logging;
 using FinancialThrottleService.Infrastructure.Models.Generated;
 using FinancialThrottleService.Infrastructure.Models.Generated.RAS;

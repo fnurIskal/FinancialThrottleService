@@ -8,3 +8,20 @@ obj/
 *.sln.docstates
 node_modules/
 **/node_modules/
+# Local credentials and generated device settings
+.env
+.env.*
+
+appsettings.Local.json
+appsettings.*.Local.json
+**/*-adminsdk-*.json
+**/google-services.json
+**/GoogleService-Info.plist
+**/credentials.json
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+.expo/
+.claude/

@@ -1,4 +1,4 @@
-﻿using FinancialThrottle.Grpc;
+using FinancialThrottle.Grpc;
 using FinancialThrottleService.Application.Interfaces;
 using FinancialThrottleService.Application.Logic;
 using Grpc.Core;
@@ -216,7 +216,7 @@ public class ThrottleStatusService : ThrottleService.ThrottleServiceBase
         }
 
         _pushTokenStore.SetToken(token);
-        _logger.LogInformation("[PUSH] Registered push token: {Token}", request.Token);
+        _logger.LogInformation("[PUSH] Registered push token");
 
         return Task.FromResult(new RegisterPushTokenResponse
         {

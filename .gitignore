@@ -361,3 +361,20 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Local credentials and generated device settings
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.Local.json
+**/*-adminsdk-*.json
+**/google-services.json
+**/GoogleService-Info.plist
+**/credentials.json
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+.expo/
+.claude/

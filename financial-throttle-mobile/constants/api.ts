@@ -1,11 +1,8 @@
 import axios from "axios";
 
-// AVD emulator kullanırken 10.0.2.2 host makinenin localhost'una karşılık gelir.
-// Gerçek cihazda test ederken bunu bilgisayarının LAN IP'sine geri al (örn. localhost).
-const LOCAL_IP = "localhost";
-
+// Set the API URL for your device in the untracked .env file.
 export const api = axios.create({
-  baseURL: `http://${LOCAL_IP}:5059/api`,
+  baseURL: process.env.EXPO_PUBLIC_API_URL || "http://localhost:5059/api",
   timeout: 15000,
   headers: { "Content-Type": "application/json" },
 });
