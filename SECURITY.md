@@ -39,13 +39,14 @@ Frontend için de .env.example dosyasından yerel .env oluşturabilirsiniz.
    iptal edin. SQL Server ve MongoDB hesap parolalarını değiştirin; erişim kayıtlarını kontrol edin.
 2. Firebase istemci anahtarının kısıtlamalarını ve kullanımını kontrol edin;
    gerekiyorsa anahtarı yenileyin. Eski Expo cihaz tokenını sunucu kayıtlarından çıkarın.
-3. GitHub master dalında temizlik öncesi 38 commit bulunuyordu. Eski commitler, diğer dallar,
-   etiketler, Actions çıktıları ve release ekleri bu çalışmada doğrulanmadı.
-   Gerçek klonda tüm geçmişi secret scanner ile tarayın; hassas dosyaları ve
-   eski değerleri git-filter-repo ile tüm ilgili ref'lerden temizleyin.
-   Geçmiş yeniden yazımı ekip ile koordine edilmelidir.
+3. Master dalının 39 commitlik geçmişi git-filter-repo ile tarandı ve temizlendi;
+   35 commit yeniden yazıldı. Firebase anahtar dosyaları geçmişten çıkarıldı,
+   eski gömülü parolalar ve cihaz tokenları kaldırıldı. Eski klonları tekrar
+   göndermeyin; depoyu yeniden klonlayın. GitHub önbellekleri, eski commit
+   bağlantıları, forklar, Actions çıktıları ve release ekleri ayrıca kontrol
+   edilmelidir; erişilebilir eski içerik için GitHub Support ile görüşün.
 4. GitHub'da temizlenmiş kaynakları ve geçmişi doğrulayıp secret scanning /
    push protection özelliklerini etkinleştirdikten sonra görünürlüğü değiştirin.
 
-Bu kaynak temizliği GitHub master dalına gönderilmek üzere hazırlanmıştır; depo görünürlüğü değiştirilmemiştir.
+Kaynak ve geçmiş temizliği master dalı için hazırlanmıştır; depo görünürlüğü değiştirilmemiştir.
 Kaynakların temizlenmesi, çalışan API'nin internete güvenle açılabileceği anlamına gelmez.
