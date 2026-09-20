@@ -1,5 +1,3 @@
- > Güvenli yapılandırma ve public paylaşım öncesi kalan işlemler: [SECURITY.md](SECURITY.md). Gerçek parolaları aşağıdaki örnek dosyalara yazmayın; ortam değişkenleri kullanın.
-
 # Financial Throttle Service
 
 ## 1. Purpose
